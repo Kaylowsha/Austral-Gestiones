@@ -1416,14 +1416,15 @@ if (parseFloat(monto) <= 0) {
             });
         }
         
-       // Agrupar por forma de pago (solo para ADMIN)
+     // Agrupar por forma de pago (solo para ADMIN)
         const porFormaPago = {};
         
         if (userRole === 'admin' && servicios) {
             servicios.forEach(s => {
-                let montoServicio = parseFloat(s.monto_total || 0);
+                let montoTotal = parseFloat(s.monto_total || 0);
+                let montoProductos = 0;
                 
-                // Restar productos del monto
+                // Calcular monto de productos
                 if (s.productos_vendidos) {
                     try {
                         const productos = typeof s.productos_vendidos === 'string' 
@@ -1432,7 +1433,7 @@ if (parseFloat(monto) <= 0) {
                         
                         if (Array.isArray(productos)) {
                             productos.forEach(p => {
-                                montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                                montoProductos += parseFloat(p.precio || 0) * (p.cantidad || 1);
                             });
                         }
                     } catch (e) {
@@ -1440,13 +1441,20 @@ if (parseFloat(monto) <= 0) {
                     }
                 }
                 
-                // Aplicar lógica según filtro
-                let montoFinal = montoServicio;
+                const montoServicio = montoTotal - montoProductos;
                 
-                if (filtro === 'todos' || filtro === 'mi') {
-                    montoFinal = montoServicio; // 100%
+                // Calcular monto final según filtro
+                let montoFinal = 0;
+                
+                if (filtro === 'todos') {
+                    // "Ver Todos": Servicios 100% + Productos 100%
+                    montoFinal = montoTotal;
+                } else if (filtro === 'mi') {
+                    // "Mi Resumen": Servicios 100% + Productos 100%
+                    montoFinal = montoTotal;
                 } else {
-                    montoFinal = montoServicio * 0.5; // 50% cuando filtra empleado
+                    // Filtro empleado: Servicios 50% + Productos 100%
+                    montoFinal = (montoServicio * 0.5) + montoProductos;
                 }
                 
                 // Acumular por forma de pago
