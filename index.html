@@ -1018,21 +1018,30 @@ function limpiarCarrito() {
         actualizarVistaCarrito();
     }
 }        
-       async function registrarServicio(e) {
+     async function registrarServicio(e) {
     e.preventDefault();
     
     showLoading();
     
     const servicioPrincipal = document.getElementById('servicioPrincipal');
     const servicioAdicional = document.getElementById('servicioAdicional');
-    const productoSelect = document.getElementById('productoVendido');
     const monto = document.getElementById('monto').value;
     const formaPago = document.getElementById('formaPago').value;
     const notas = document.getElementById('notas').value;
     
-    // Validaciones
-    if (!servicioPrincipal.value || !monto || !formaPago) {
-        alert('Por favor completa todos los campos obligatorios');
+    // NUEVA VALIDACIÓN: Al menos debe haber un servicio O productos
+    const hayServicio = servicioPrincipal.value;
+    const hayProductos = carritoProductos.length > 0;
+    
+    if (!hayServicio && !hayProductos) {
+        alert('⚠️ Debes agregar al menos:\n• Un servicio, O\n• Uno o más productos');
+        hideLoading();
+        return;
+    }
+    
+    // Validar campos obligatorios
+    if (!monto || !formaPago) {
+        alert('⚠️ Por favor completa: Monto y Forma de Pago');
         hideLoading();
         return;
     }
@@ -1061,63 +1070,62 @@ function limpiarCarrito() {
         
         console.log(`✅ Código asignado: #${nuevoCodigo}`);
         
-        // Obtener datos del servicio
-        const serviciosActivos = window.serviciosActivos || [];
-        const servicioPrincipalData = serviciosActivos.find(s => s.id === servicioPrincipal.value);
-        const servicioAdicionalData = servicioAdicional.value ? serviciosActivos.find(s => s.id === servicioAdicional.value) : null;
+        // Obtener datos del servicio (si hay)
+        let servicioPrincipalData = null;
+        let servicioAdicionalData = null;
         
-        if (!servicioPrincipalData) {
-            console.error('❌ Servicio principal no encontrado');
-            alert('❌ Error: Servicio no válido. Recarga la página.');
-            hideLoading();
-            return;
-        }
-        
-        // Datos del producto (si se seleccionó)
-        let productoId = null;
-        let productoNombre = null;
-        let productoPrecio = null;
-        let productoData = null;
-        
-        if (productoSelect.value) {
-            const option = productoSelect.options[productoSelect.selectedIndex];
-            productoId = productoSelect.value;
-            productoNombre = option.dataset.nombre;
-            productoPrecio = parseFloat(option.dataset.precio);
+        if (hayServicio) {
+            const serviciosActivos = window.serviciosActivos || [];
+            servicioPrincipalData = serviciosActivos.find(s => s.id === servicioPrincipal.value);
+            servicioAdicionalData = servicioAdicional.value ? serviciosActivos.find(s => s.id === servicioAdicional.value) : null;
             
-            // Buscar producto completo
-            productoData = window.productosDisponibles?.find(p => p.id === productoId);
-            
-            if (!productoData) {
-                alert('❌ Error: Producto no encontrado');
+            if (!servicioPrincipalData) {
+                console.error('❌ Servicio principal no encontrado');
+                alert('❌ Error: Servicio no válido. Recarga la página.');
                 hideLoading();
                 return;
             }
-            
-            // Validar stock
-            if (productoData.stock_actual <= 0) {
-                alert(`❌ Sin stock disponible de ${productoNombre}`);
-                hideLoading();
-                return;
-            }
-            
-            console.log('🧴 Producto seleccionado:', productoNombre, '- Stock:', productoData.stock_actual);
         }
         
-        // Crear objeto del servicio
-        const nuevoServicio = {
+        // Validar stock de productos en carrito
+        if (hayProductos) {
+            console.log('📦 Validando stock de productos...');
+            
+            for (const item of carritoProductos) {
+                const producto = window.productosDisponibles?.find(p => p.id === item.id);
+                
+                if (!producto) {
+                    alert(`❌ Error: Producto "${item.nombre}" no encontrado`);
+                    hideLoading();
+                    return;
+                }
+                
+                // Contar cuántas veces está el producto en el carrito
+                const cantidadTotal = carritoProductos
+                    .filter(p => p.id === item.id)
+                    .reduce((sum, p) => sum + p.cantidad, 0);
+                
+                if (producto.stock_actual < cantidadTotal) {
+                    alert(`❌ Stock insuficiente\n\nProducto: ${item.nombre}\nStock disponible: ${producto.stock_actual}\nIntentando vender: ${cantidadTotal}`);
+                    hideLoading();
+                    return;
+                }
+            }
+            
+            console.log('✅ Stock validado correctamente');
+        }
+        
+        // Crear objeto del registro
+        const nuevoRegistro = {
             barberia_id: window.CURRENT_BARBERIA_ID,
             realizado_por_id: currentUser.id,
             realizado_por_nombre: currentUser.nombre,
-            servicio_principal_id: servicioPrincipalData.id,
-            servicio_principal_nombre: servicioPrincipalData.nombre,
-            servicio_precio_sugerido: servicioPrincipalData.precio_sugerido,
+            servicio_principal_id: servicioPrincipalData ? servicioPrincipalData.id : null,
+            servicio_principal_nombre: servicioPrincipalData ? servicioPrincipalData.nombre : null,
+            servicio_precio_sugerido: servicioPrincipalData ? servicioPrincipalData.precio_sugerido : null,
             servicio_adicional_id: servicioAdicionalData ? servicioAdicionalData.id : null,
             servicio_adicional_nombre: servicioAdicionalData ? servicioAdicionalData.nombre : null,
-            producto_id: productoId,
-            producto_nombre: productoNombre,
-            producto_precio: productoPrecio,
-            producto_cantidad: productoId ? 1 : null,
+            productos_vendidos: hayProductos ? JSON.stringify(carritoProductos) : '[]',
             monto_total: parseFloat(monto),
             forma_pago: formaPago,
             notas: notas || null,
@@ -1126,12 +1134,12 @@ function limpiarCarrito() {
             created_at: getTimestampChile()
         };
         
-        console.log('💾 Guardando servicio:', nuevoServicio);
+        console.log('💾 Guardando registro:', nuevoRegistro);
         
-        // Guardar servicio
+        // Guardar registro
         const { data, error } = await supabase
             .from('citas')
-            .insert([nuevoServicio])
+            .insert([nuevoRegistro])
             .select();
         
         if (error) {
@@ -1141,48 +1149,73 @@ function limpiarCarrito() {
             return;
         }
         
-        console.log('✅ Servicio guardado:', data);
+        console.log('✅ Registro guardado:', data);
         
-        // Si hay producto, restar stock
-        if (productoId && productoData) {
-            console.log('📦 Restando stock del producto...');
+        // Actualizar stock de productos
+        if (hayProductos) {
+            console.log('📦 Actualizando stock de productos...');
             
-            const nuevoStock = productoData.stock_actual - 1;
+            // Agrupar productos para actualizar stock
+            const stockUpdates = {};
+            carritoProductos.forEach(item => {
+                if (!stockUpdates[item.id]) {
+                    stockUpdates[item.id] = 0;
+                }
+                stockUpdates[item.id] += item.cantidad;
+            });
             
-            const { error: errorStock } = await supabase
-                .from('productos')
-                .update({ stock_actual: nuevoStock })
-                .eq('id', productoId)
-                .eq('barberia_id', window.CURRENT_BARBERIA_ID);
-            
-            if (errorStock) {
-                console.error('⚠️ Error actualizando stock:', errorStock);
-                alert(`⚠️ Servicio registrado pero no se pudo actualizar el stock de ${productoNombre}`);
-            } else {
-                console.log(`✅ Stock actualizado: ${productoData.stock_actual} → ${nuevoStock}`);
+            // Actualizar stock de cada producto
+            for (const [productoId, cantidadVendida] of Object.entries(stockUpdates)) {
+                const producto = window.productosDisponibles.find(p => p.id === productoId);
+                const nuevoStock = producto.stock_actual - cantidadVendida;
+                
+                const { error: errorStock } = await supabase
+                    .from('productos')
+                    .update({ stock_actual: nuevoStock })
+                    .eq('id', productoId)
+                    .eq('barberia_id', window.CURRENT_BARBERIA_ID);
+                
+                if (errorStock) {
+                    console.error('⚠️ Error actualizando stock:', errorStock);
+                    alert(`⚠️ Registro guardado pero no se pudo actualizar el stock de ${producto.nombre}`);
+                } else {
+                    console.log(`✅ Stock actualizado: ${producto.nombre} (${producto.stock_actual} → ${nuevoStock})`);
+                }
             }
         }
         
         // Mensaje de éxito
-        let mensaje = `✅ Servicio #${nuevoCodigo} registrado exitosamente!`;
-        if (productoNombre) {
-            mensaje += `\n\n🧴 Producto vendido: ${productoNombre}`;
+        let mensaje = `✅ Registro #${nuevoCodigo} guardado exitosamente!`;
+        
+        if (hayServicio) {
+            mensaje += `\n\n✂️ Servicio: ${servicioPrincipalData.nombre}`;
+        }
+        
+        if (hayProductos) {
+            const totalProductos = carritoProductos.reduce((sum, p) => sum + p.cantidad, 0);
+            mensaje += `\n\n🧴 Productos vendidos: ${totalProductos}`;
+            carritoProductos.forEach(item => {
+                mensaje += `\n  • ${item.nombre} (x${item.cantidad})`;
+            });
         }
         
         alert(mensaje);
+        
+        // Limpiar formulario
         document.getElementById('registroForm').reset();
+        carritoProductos = [];
+        actualizarVistaCarrito();
         
         // Recargar productos por si cambió el stock
         cargarProductosParaVenta();
         
     } catch (error) {
         console.error('❌ Error:', error);
-        alert('Error al registrar el servicio: ' + error.message);
+        alert('Error al registrar: ' + error.message);
     }
     
     hideLoading();
-}
-        
+}   
         // ===============================
         // PESTAÑA: RESUMEN
         // ===============================
