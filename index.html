@@ -1452,64 +1452,66 @@ if (parseFloat(monto) <= 0) {
                 </div>
         `;
         
-        // Agregar productos vendidos si hay
-        const productosVendidos = [];
-        servicios.forEach(s => {
-            if (s.productos_vendidos) {
-                try {
-                    const productos = typeof s.productos_vendidos === 'string' 
-                        ? JSON.parse(s.productos_vendidos) 
-                        : s.productos_vendidos;
-                    
-                    if (Array.isArray(productos) && productos.length > 0) {
-                        productosVendidos.push(...productos);
+     // Agregar productos vendidos SOLO SI ES ADMIN
+        if (userRole === 'admin') {
+            const productosVendidos = [];
+            servicios.forEach(s => {
+                if (s.productos_vendidos) {
+                    try {
+                        const productos = typeof s.productos_vendidos === 'string' 
+                            ? JSON.parse(s.productos_vendidos) 
+                            : s.productos_vendidos;
+                        
+                        if (Array.isArray(productos) && productos.length > 0) {
+                            productosVendidos.push(...productos);
+                        }
+                    } catch (e) {
+                        console.error('Error parseando productos:', e);
                     }
-                } catch (e) {
-                    console.error('Error parseando productos:', e);
                 }
-            }
-        });
-        
-        if (productosVendidos.length > 0) {
-            // Agrupar productos
-            const productosAgrupados = {};
-            let totalProductos = 0;
-            
-            productosVendidos.forEach(p => {
-                if (!productosAgrupados[p.nombre]) {
-                    productosAgrupados[p.nombre] = { cantidad: 0, monto: 0 };
-                }
-                productosAgrupados[p.nombre].cantidad += (p.cantidad || 1);
-                productosAgrupados[p.nombre].monto += parseFloat(p.precio || 0) * (p.cantidad || 1);
-                totalProductos += parseFloat(p.precio || 0) * (p.cantidad || 1);
             });
             
-            html += `
-                <div class="border-t pt-4 mt-4">
-                    <h4 class="font-semibold mb-3 text-purple-700"><i class="fas fa-box mr-2"></i>Productos Vendidos</h4>
-                    <div class="bg-purple-50 rounded-lg p-4">
-                        <div class="space-y-2 mb-3">
-            `;
-            
-            Object.entries(productosAgrupados).forEach(([nombre, data]) => {
+            if (productosVendidos.length > 0) {
+                // Agrupar productos
+                const productosAgrupados = {};
+                let totalProductos = 0;
+                
+                productosVendidos.forEach(p => {
+                    if (!productosAgrupados[p.nombre]) {
+                        productosAgrupados[p.nombre] = { cantidad: 0, monto: 0 };
+                    }
+                    productosAgrupados[p.nombre].cantidad += (p.cantidad || 1);
+                    productosAgrupados[p.nombre].monto += parseFloat(p.precio || 0) * (p.cantidad || 1);
+                    totalProductos += parseFloat(p.precio || 0) * (p.cantidad || 1);
+                });
+                
                 html += `
-                    <div class="flex justify-between text-sm">
-                        <span class="text-purple-800">${nombre} (x${data.cantidad}):</span>
-                        <span class="font-semibold text-purple-900">$${data.monto.toLocaleString('es-CL')}</span>
+                    <div class="border-t pt-4 mt-4">
+                        <h4 class="font-semibold mb-3 text-purple-700"><i class="fas fa-box mr-2"></i>Productos Vendidos</h4>
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <div class="space-y-2 mb-3">
+                `;
+                
+                Object.entries(productosAgrupados).forEach(([nombre, data]) => {
+                    html += `
+                        <div class="flex justify-between text-sm">
+                            <span class="text-purple-800">${nombre} (x${data.cantidad}):</span>
+                            <span class="font-semibold text-purple-900">$${data.monto.toLocaleString('es-CL')}</span>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-purple-200 font-bold">
+                                <span class="text-purple-900">Total Productos:</span>
+                                <span class="text-purple-900">$${totalProductos.toLocaleString('es-CL')}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">💡 Productos NO generan comisión para empleados</p>
                     </div>
                 `;
-            });
-            
-            html += `
-                        </div>
-                        <div class="flex justify-between pt-2 border-t border-purple-200 font-bold">
-                            <span class="text-purple-900">Total Productos:</span>
-                            <span class="text-purple-900">$${totalProductos.toLocaleString('es-CL')}</span>
-                        </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2">💡 Productos NO generan comisión para empleados</p>
-                </div>
-            `;
+            }
         }
         
         html += `
