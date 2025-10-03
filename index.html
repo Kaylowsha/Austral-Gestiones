@@ -3302,17 +3302,21 @@ if (vista !== 'diaria') {
             }
         }
         
-        function mostrarCierre(datos) {
-            const {
-                vista,
-                fechaInicio,
-                fechaFin,
-                totalRecaudado,
-                totalServicios,
-                totalAdelantos,
-                montoAPagar,
-                porFormaPago
-            } = datos;
+       function mostrarCierre(datos) {
+    const {
+        vista,
+        fechaInicio,
+        fechaFin,
+        totalRecaudado,
+        totalRecaudadoSinComision,
+        totalServicios,
+        totalAdelantos,
+        montoAPagar,
+        porFormaPago,
+        servicios,
+        filtro,
+        comisionTransbank
+    } = datos;
             
             const contenido = document.getElementById('contenidoCierre');
             
