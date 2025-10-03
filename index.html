@@ -1369,14 +1369,15 @@ if (parseFloat(monto) <= 0) {
         if (error) throw error;
         
   // Calcular totales SOLO DE SERVICIOS (sin productos)
-        let totalRecaudado = 0;
+        let totalRecaudadoSinComision = 0; // 100% real
+        let totalRecaudado = 0; // Con comisión aplicada
         const totalServicios = servicios ? servicios.length : 0;
         
         if (servicios) {
             servicios.forEach(s => {
                 let montoServicio = parseFloat(s.monto_total || 0);
                 
-                // Restar productos si los hay (para TODOS)
+                // Restar productos si los hay
                 if (s.productos_vendidos) {
                     try {
                         const productos = typeof s.productos_vendidos === 'string' 
@@ -1393,7 +1394,25 @@ if (parseFloat(monto) <= 0) {
                     }
                 }
                 
-                totalRecaudado += montoServicio;
+                // Acumular monto real (sin comisión)
+                totalRecaudadoSinComision += montoServicio;
+                
+                // Aplicar lógica de comisión según rol y filtro
+                if (userRole === 'empleado') {
+                    // EMPLEADO: Siempre ve 50% de sus servicios
+                    totalRecaudado += montoServicio * 0.5;
+                } else if (userRole === 'admin') {
+                    if (filtro === 'todos') {
+                        // ADMIN "Ver Todos": 100% real (sin comisión)
+                        totalRecaudado += montoServicio;
+                    } else if (filtro === 'mi') {
+                        // ADMIN "Mi Resumen": 100% de sus servicios
+                        totalRecaudado += montoServicio;
+                    } else {
+                        // ADMIN filtrando un empleado: 50% (lo que le debe pagar)
+                        totalRecaudado += montoServicio * 0.5;
+                    }
+                }
             });
         }
         
@@ -1447,8 +1466,8 @@ if (parseFloat(monto) <= 0) {
                 </h3>
                 <p class="text-gray-600 mb-6">${fechaInicio === fechaFin ? fechaInicio : fechaInicio + ' al ' + fechaFin}</p>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                   <div class="bg-blue-50 p-4 rounded-lg">
+               <div class="grid grid-cols-1 md:grid-cols-${(userRole === 'admin' && filtro === 'todos') ? '3' : '2'} gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
                         <div class="text-sm text-blue-600 mb-1">💰 Total Servicios</div>
                         <div class="text-2xl font-bold text-blue-900">$${totalRecaudado.toLocaleString('es-CL')}</div>
                     </div>
@@ -1457,6 +1476,42 @@ if (parseFloat(monto) <= 0) {
                         <div class="text-sm text-green-600 mb-1">📊 Servicios Realizados</div>
                         <div class="text-2xl font-bold text-green-900">${totalServicios}</div>
                     </div>
+        `;
+        
+        // Agregar TOTAL GENERAL solo si es admin con "Ver Todos"
+        if (userRole === 'admin' && filtro === 'todos') {
+            // Calcular total de productos
+            let totalProductos = 0;
+            servicios.forEach(s => {
+                if (s.productos_vendidos) {
+                    try {
+                        const productos = typeof s.productos_vendidos === 'string' 
+                            ? JSON.parse(s.productos_vendidos) 
+                            : s.productos_vendidos;
+                        
+                        if (Array.isArray(productos)) {
+                            productos.forEach(p => {
+                                totalProductos += parseFloat(p.precio || 0) * (p.cantidad || 1);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error parseando productos:', e);
+                    }
+                }
+            });
+            
+            const totalGeneral = totalRecaudadoSinComision + totalProductos;
+            
+            html += `
+                    <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-200">
+                        <div class="text-sm text-purple-600 mb-1 font-semibold">💰 TOTAL GENERAL</div>
+                        <div class="text-2xl font-bold text-purple-900">$${totalGeneral.toLocaleString('es-CL')}</div>
+                        <div class="text-xs text-purple-600 mt-1">Servicios + Productos</div>
+                    </div>
+            `;
+        }
+        
+        html += `
         `;
         
         if (vista !== 'diaria' && totalAdelantos > 0) {
