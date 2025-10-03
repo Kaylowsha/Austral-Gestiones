@@ -1834,6 +1834,7 @@ function mostrarListaServicios(servicios) {
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barbero</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Servicio</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Productos</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
                         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pago</th>
                         ${esAdmin ? '<th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>' : ''}
@@ -1842,12 +1843,31 @@ function mostrarListaServicios(servicios) {
                 <tbody class="bg-white divide-y divide-gray-200">
     `;
 
-    servicios.forEach(servicio => {
+   servicios.forEach(servicio => {
+        // Parsear productos vendidos
+        let productosHTML = '<span class="text-gray-400">-</span>';
+        if (servicio.productos_vendidos) {
+            try {
+                const productos = typeof servicio.productos_vendidos === 'string' 
+                    ? JSON.parse(servicio.productos_vendidos) 
+                    : servicio.productos_vendidos;
+                
+                if (Array.isArray(productos) && productos.length > 0) {
+                    productosHTML = productos.map(p => 
+                        `<div class="text-purple-600 text-xs"><i class="fas fa-box mr-1"></i>${p.nombre} (x${p.cantidad})</div>`
+                    ).join('');
+                }
+            } catch (e) {
+                console.error('Error parseando productos:', e);
+            }
+        }
+        
         html += `
             <tr>
                 <td class="px-4 py-3 text-sm font-mono">#${servicio.codigo_diario || servicio.id}</td>
                 <td class="px-4 py-3 text-sm">${servicio.realizado_por_nombre}</td>
-                <td class="px-4 py-3 text-sm">${servicio.servicio_principal_nombre}</td>
+                <td class="px-4 py-3 text-sm">${servicio.servicio_principal_nombre || '<span class="text-gray-400 italic">Sin servicio</span>'}</td>
+                <td class="px-4 py-3 text-sm">${productosHTML}</td>
                 <td class="px-4 py-3 text-sm font-semibold text-green-600">$${servicio.monto_total.toLocaleString('es-CL')}</td>
                 <td class="px-4 py-3 text-sm">${servicio.forma_pago}</td>
                 ${esAdmin ? `<td class="px-4 py-3 text-sm">
