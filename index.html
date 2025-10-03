@@ -4163,26 +4163,88 @@ function loadConfiguracion() {
                 </p>
             </div>
             
-            <!-- Card de Gestión de Servicios -->
-               <div class="bg-white rounded-lg shadow p-6">
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold">
-            <i class="fas fa-cut mr-2"></i>Servicios de la Barbería
-        </h3>
-        <button onclick="mostrarModalAgregarServicio()" 
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            <i class="fas fa-plus mr-2"></i>Agregar Servicio
+            <!-- Tabs de Configuración -->
+<div class="mb-6 border-b border-gray-200">
+    <nav class="flex space-x-4">
+        <button onclick="mostrarTabConfiguracion('servicios')" id="tabConfigServicios" 
+            class="tab-config-btn border-b-2 border-blue-600 text-blue-600 py-3 px-4 font-medium">
+            ✂️ Servicios
         </button>
+        <button onclick="mostrarTabConfiguracion('productos')" id="tabConfigProductos" 
+            class="tab-config-btn text-gray-600 hover:text-gray-800 py-3 px-4 font-medium">
+            🧴 Productos
+        </button>
+    </nav>
+</div>
+
+<!-- Sección Servicios (Tab) -->
+<div id="configServicios" class="tab-config-content">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">
+                <i class="fas fa-cut mr-2"></i>Servicios de la Barbería
+            </h3>
+            <button onclick="mostrarModalAgregarServicio()" 
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Agregar Servicio
+            </button>
+        </div>
+        
+        <p class="text-gray-600 mb-4 text-sm">
+            Gestiona los servicios que aparecen en el formulario de registro
+        </p>
+        
+        <div id="listaServicios">
+            <div class="text-center py-4">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="mt-2 text-gray-600">Cargando servicios...</p>
+            </div>
+        </div>
     </div>
-    
-    <p class="text-gray-600 mb-4 text-sm">
-        Gestiona los servicios que aparecen en el formulario de registro
-    </p>
-    
-    <div id="listaServicios">
-        <div class="text-center py-4">
-            <div class="loading-spinner mx-auto"></div>
-            <p class="mt-2 text-gray-600">Cargando servicios...</p>
+</div>
+
+<!-- Sección Productos (Tab) -->
+<div id="configProductos" class="tab-config-content hidden">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">
+                <i class="fas fa-box mr-2"></i>Productos de la Barbería
+            </h3>
+            <button onclick="mostrarModalAgregarProducto()" 
+                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                <i class="fas fa-plus mr-2"></i>Agregar Producto
+            </button>
+        </div>
+        
+        <p class="text-gray-600 mb-4 text-sm">
+            Gestiona los productos que vendes (gel, cera, shampoo, etc)
+        </p>
+        
+        <!-- Alertas de stock bajo -->
+        <div id="alertasStockBajo" class="mb-4"></div>
+        
+        <!-- Lista de productos -->
+        <div id="listaProductos">
+            <div class="text-center py-4">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="mt-2 text-gray-600">Cargando productos...</p>
+            </div>
+        </div>
+        
+        <!-- Nota informativa -->
+        <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                <div class="text-sm text-blue-800">
+                    <p class="font-semibold mb-1">💡 Información importante:</p>
+                    <ul class="list-disc list-inside space-y-1 text-blue-700">
+                        <li>Los productos se pueden vender en "Registrar Servicio"</li>
+                        <li>El stock se resta automáticamente al vender</li>
+                        <li><strong>Los productos NO generan comisión para empleados</strong></li>
+                        <li>100% de la venta de productos va para el administrador</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>
