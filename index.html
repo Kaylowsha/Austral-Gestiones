@@ -164,10 +164,13 @@
         const SUPABASE_ANON_KEY = SUPABASE_CONFIG.anonKey;
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        // Variables globales
-        let currentUser = null;
-        let currentBarberia = null;
-        let userRole = null;
+       // Variables globales
+let currentUser = null;
+let currentBarberia = null;
+let userRole = null;
+
+// Variables del carrito de productos
+let carritoProductos = [];
 
 // ===============================
 // FUNCIONES DE FECHA CHILE
@@ -857,7 +860,10 @@ async function cargarProductosParaVenta() {
             `<option value="${p.id}" data-precio="${p.precio_venta}" data-stock="${p.stock_actual}" data-nombre="${p.nombre}">${p.nombre} - $${p.precio_venta.toLocaleString('es-CL')} (Stock: ${p.stock_actual})</option>`
         ).join('');
         
-        select.innerHTML = '<option value="">Sin producto</option>' + options;
+        select.innerHTML = '<option value="">Seleccionar producto...</option>' + options;
+        
+        // Agregar evento para mostrar info al seleccionar
+        select.addEventListener('change', mostrarInfoProductoSeleccionado);
         
         console.log(`✅ ${productos.length} productos cargados para venta`);
         
@@ -865,12 +871,15 @@ async function cargarProductosParaVenta() {
         console.error('❌ Error cargando productos:', error);
     }
 }
+// ===============================
+// FUNCIONES DEL CARRITO DE PRODUCTOS
+// ===============================
 
-function actualizarPrecioProducto() {
+function mostrarInfoProductoSeleccionado() {
     const select = document.getElementById('productoVendido');
-    const infoDiv = document.getElementById('infoProducto');
-    const precioSpan = document.getElementById('precioProductoMostrar');
-    const stockSpan = document.getElementById('stockProductoMostrar');
+    const infoDiv = document.getElementById('infoProductoSeleccionado');
+    const precioSpan = document.getElementById('precioUnitarioMostrar');
+    const stockSpan = document.getElementById('stockDisponibleMostrar');
     
     if (!select.value) {
         infoDiv.classList.add('hidden');
@@ -885,7 +894,130 @@ function actualizarPrecioProducto() {
     stockSpan.textContent = `${stock} unidades`;
     infoDiv.classList.remove('hidden');
 }
+
+function agregarProductoAlCarrito() {
+    const select = document.getElementById('productoVendido');
+    const cantidadInput = document.getElementById('cantidadProducto');
+    
+    if (!select.value) {
+        alert('⚠️ Por favor selecciona un producto');
+        return;
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const productoId = select.value;
+    const productoNombre = option.dataset.nombre;
+    const precioUnitario = parseFloat(option.dataset.precio);
+    const stockDisponible = parseInt(option.dataset.stock);
+    const cantidad = parseInt(cantidadInput.value);
+    
+    // Validar cantidad
+    if (cantidad <= 0) {
+        alert('⚠️ La cantidad debe ser mayor a 0');
+        return;
+    }
+    
+    // Validar stock disponible
+    const cantidadEnCarrito = carritoProductos
+        .filter(p => p.id === productoId)
+        .reduce((sum, p) => sum + p.cantidad, 0);
+    
+    if (cantidadEnCarrito + cantidad > stockDisponible) {
+        alert(`⚠️ Stock insuficiente\n\nDisponible: ${stockDisponible}\nYa en carrito: ${cantidadEnCarrito}\nIntentando agregar: ${cantidad}`);
+        return;
+    }
+    
+    // Agregar al carrito
+    carritoProductos.push({
+        id: productoId,
+        nombre: productoNombre,
+        precio: precioUnitario,
+        cantidad: cantidad
+    });
+    
+    console.log('🛒 Producto agregado al carrito:', productoNombre, 'x', cantidad);
+    
+    // Actualizar UI
+    actualizarVistaCarrito();
+    
+    // Limpiar selector
+    select.value = '';
+    cantidadInput.value = 1;
+    document.getElementById('infoProductoSeleccionado').classList.add('hidden');
+}
+
+function actualizarVistaCarrito() {
+    const carritoDiv = document.getElementById('carritoProductos');
+    const listaDiv = document.getElementById('listaCarrito');
+    const subtotalSpan = document.getElementById('subtotalCarrito');
+    
+    if (carritoProductos.length === 0) {
+        carritoDiv.classList.add('hidden');
+        return;
+    }
+    
+    // Mostrar carrito
+    carritoDiv.classList.remove('hidden');
+    
+    // Agrupar productos iguales
+    const productosAgrupados = {};
+    carritoProductos.forEach((item, index) => {
+        if (!productosAgrupados[item.id]) {
+            productosAgrupados[item.id] = {
+                nombre: item.nombre,
+                precio: item.precio,
+                cantidad: 0,
+                indices: []
+            };
+        }
+        productosAgrupados[item.id].cantidad += item.cantidad;
+        productosAgrupados[item.id].indices.push(index);
+    });
+    
+    // Generar HTML de items
+    let html = '';
+    let subtotal = 0;
+    
+    Object.entries(productosAgrupados).forEach(([id, item]) => {
+        const total = item.precio * item.cantidad;
+        subtotal += total;
         
+        html += `
+            <div class="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                <div class="flex-1">
+                    <span class="font-medium text-gray-800">${item.nombre}</span>
+                    <span class="text-gray-600"> (x${item.cantidad})</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold text-purple-700">$${total.toLocaleString('es-CL')}</span>
+                    <button type="button" onclick="eliminarProductoDelCarrito('${id}')" 
+                        class="text-red-600 hover:text-red-800 transition-colors">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    listaDiv.innerHTML = html;
+    subtotalSpan.textContent = `$${subtotal.toLocaleString('es-CL')}`;
+}
+
+function eliminarProductoDelCarrito(productoId) {
+    carritoProductos = carritoProductos.filter(item => item.id !== productoId);
+    console.log('🗑️ Producto eliminado del carrito:', productoId);
+    actualizarVistaCarrito();
+}
+
+function limpiarCarrito() {
+    if (carritoProductos.length === 0) return;
+    
+    if (confirm('¿Limpiar todo el carrito?')) {
+        carritoProductos = [];
+        console.log('🧹 Carrito limpiado');
+        actualizarVistaCarrito();
+    }
+}        
        async function registrarServicio(e) {
     e.preventDefault();
     
