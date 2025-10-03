@@ -1416,11 +1416,44 @@ if (parseFloat(monto) <= 0) {
             });
         }
         
-        // Agrupar por forma de pago
-        const porFormaPago = servicios ? servicios.reduce((acc, s) => {
-            acc[s.forma_pago] = (acc[s.forma_pago] || 0) + parseFloat(s.monto_total || 0);
-            return acc;
-        }, {}) : {};
+       // Agrupar por forma de pago (solo para ADMIN)
+        const porFormaPago = {};
+        
+        if (userRole === 'admin' && servicios) {
+            servicios.forEach(s => {
+                let montoServicio = parseFloat(s.monto_total || 0);
+                
+                // Restar productos del monto
+                if (s.productos_vendidos) {
+                    try {
+                        const productos = typeof s.productos_vendidos === 'string' 
+                            ? JSON.parse(s.productos_vendidos) 
+                            : s.productos_vendidos;
+                        
+                        if (Array.isArray(productos)) {
+                            productos.forEach(p => {
+                                montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error parseando productos:', e);
+                    }
+                }
+                
+                // Aplicar lógica según filtro
+                let montoFinal = montoServicio;
+                
+                if (filtro === 'todos' || filtro === 'mi') {
+                    montoFinal = montoServicio; // 100%
+                } else {
+                    montoFinal = montoServicio * 0.5; // 50% cuando filtra empleado
+                }
+                
+                // Acumular por forma de pago
+                const formaPago = s.forma_pago;
+                porFormaPago[formaPago] = (porFormaPago[formaPago] || 0) + montoFinal;
+            });
+        }
         
         // Obtener adelantos si es vista semanal o mensual
         let totalAdelantos = 0;
@@ -1594,7 +1627,9 @@ if (parseFloat(monto) <= 0) {
             }
         }
         
-        html += `
+       // Mostrar desglose SOLO para ADMIN
+        if (userRole === 'admin') {
+            html += `
                 <div class="border-t pt-4">
                     <h4 class="font-semibold mb-3">💳 Desglose por Forma de Pago</h4>
                     <div class="space-y-2">
@@ -1616,6 +1651,10 @@ if (parseFloat(monto) <= 0) {
                         </div>
                     </div>
                 </div>
+            `;
+        }
+        
+        html += `
             </div>
         `;
         
