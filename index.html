@@ -1558,6 +1558,10 @@ if (parseFloat(monto) <= 0) {
                             <span class="font-semibold">$${(porFormaPago['Cuenta RUT'] || 0).toLocaleString('es-CL')}</span>
                         </div>
                         <div class="flex justify-between">
+                            <span>💳 Transbank:</span>
+                            <span class="font-semibold">$${(porFormaPago['Transbank'] || 0).toLocaleString('es-CL')}</span>
+                        </div>
+                        <div class="flex justify-between">
                             <span>📱 Mercado Pago:</span>
                             <span class="font-semibold">$${(porFormaPago['Mercado Pago'] || 0).toLocaleString('es-CL')}</span>
                         </div>
