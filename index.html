@@ -3182,7 +3182,61 @@ function mostrarTablaHistorial(adelantos) {
                     acc[s.forma_pago] = (acc[s.forma_pago] || 0) + parseFloat(s.monto_total || 0);
                     return acc;
                 }, {}) : {};
-                
+                // Calcular comisión Transbank si está activada
+        let comisionTransbank = 0;
+        const opcionComision = document.querySelector('input[name="comisionTransbank"]:checked')?.value || 'ninguno';
+        
+        if (userRole === 'admin' && opcionComision !== 'ninguno' && servicios) {
+            let montoTransbankServicios = 0;
+            let montoTransbankProductos = 0;
+            
+            servicios.forEach(s => {
+                if (s.forma_pago === 'Transbank') {
+                    let montoTotal = parseFloat(s.monto_total || 0);
+                    let montoProductos = 0;
+                    
+                    // Calcular monto de productos
+                    if (s.productos_vendidos) {
+                        try {
+                            const productos = typeof s.productos_vendidos === 'string' 
+                                ? JSON.parse(s.productos_vendidos) 
+                                : s.productos_vendidos;
+                            
+                            if (Array.isArray(productos)) {
+                                productos.forEach(p => {
+                                    montoProductos += parseFloat(p.precio || 0) * (p.cantidad || 1);
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Error parseando productos:', e);
+                        }
+                    }
+                    
+                    const montoServicio = montoTotal - montoProductos;
+                    
+                    // Acumular según filtro
+                    if (filtro === 'todos' || filtro === 'mi') {
+                        montoTransbankServicios += montoServicio;
+                        montoTransbankProductos += montoProductos;
+                    } else {
+                        // Cuando filtra empleado, solo cuenta 50% del servicio
+                        montoTransbankServicios += montoServicio * 0.5;
+                        montoTransbankProductos += montoProductos;
+                    }
+                }
+            });
+            
+            // Calcular comisión según opción seleccionada
+            if (opcionComision === 'ambos') {
+                comisionTransbank = (montoTransbankServicios + montoTransbankProductos) * 0.027;
+            } else if (opcionComision === 'servicios') {
+                comisionTransbank = montoTransbankServicios * 0.027;
+            } else if (opcionComision === 'productos') {
+                comisionTransbank = montoTransbankProductos * 0.027;
+            }
+            
+            console.log(`💳 Comisión Transbank calculada: $${comisionTransbank.toLocaleString('es-CL')} (opción: ${opcionComision})`);
+        }
                 // Cargar adelantos SOLO para vista semanal y rango
 let totalAdelantos = 0;
 if (vista !== 'diaria') {
@@ -3226,16 +3280,21 @@ if (vista !== 'diaria') {
                 const montoAPagar = totalRecaudado - totalAdelantos;
                 
                 // Generar HTML del cierre
+              
                 mostrarCierre({
-                    vista,
-                    fechaInicio,
-                    fechaFin,
-                    totalRecaudado,
-                    totalServicios,
-                    totalAdelantos,
-                    montoAPagar,
-                    porFormaPago
-                });
+            vista,
+            fechaInicio,
+            fechaFin,
+            totalRecaudado,
+            totalRecaudadoSinComision,
+            totalServicios,
+            totalAdelantos,
+            montoAPagar,
+            porFormaPago,
+            servicios,
+            filtro,
+            comisionTransbank
+        });
                 
             } catch (error) {
                 console.error('❌ Error cargando cierre:', error);
