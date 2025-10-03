@@ -1368,9 +1368,40 @@ if (parseFloat(monto) <= 0) {
         
         if (error) throw error;
         
-        // Calcular totales
-        const totalRecaudado = servicios ? servicios.reduce((sum, s) => sum + parseFloat(s.monto_total || 0), 0) : 0;
+       // Calcular totales
+        let totalRecaudado = 0;
         const totalServicios = servicios ? servicios.length : 0;
+        
+        if (servicios) {
+            if (userRole === 'empleado') {
+                // EMPLEADO: Calcular SOLO monto de servicios (sin productos)
+                servicios.forEach(s => {
+                    let montoServicio = parseFloat(s.monto_total || 0);
+                    
+                    // Restar productos si los hay
+                    if (s.productos_vendidos) {
+                        try {
+                            const productos = typeof s.productos_vendidos === 'string' 
+                                ? JSON.parse(s.productos_vendidos) 
+                                : s.productos_vendidos;
+                            
+                            if (Array.isArray(productos)) {
+                                productos.forEach(p => {
+                                    montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Error parseando productos:', e);
+                        }
+                    }
+                    
+                    totalRecaudado += montoServicio;
+                });
+            } else {
+                // ADMIN: Mostrar monto total (servicios + productos)
+                totalRecaudado = servicios.reduce((sum, s) => sum + parseFloat(s.monto_total || 0), 0);
+            }
+        }
         
         // Agrupar por forma de pago
         const porFormaPago = servicios ? servicios.reduce((acc, s) => {
