@@ -4655,6 +4655,514 @@ function cerrarModalServicio() {
     }
 }
         // ===============================
+        // GESTIÓN DE PRODUCTOS - TABS Y CRUD
+        // ===============================
+        
+        function mostrarTabConfiguracion(tab) {
+            console.log('🔄 Cambiando a tab:', tab);
+            
+            // Ocultar todos los contenidos
+            document.querySelectorAll('.tab-config-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Desactivar todos los botones
+            document.querySelectorAll('.tab-config-btn').forEach(btn => {
+                btn.classList.remove('border-b-2', 'border-blue-600', 'text-blue-600');
+                btn.classList.add('text-gray-600');
+            });
+            
+            // Mostrar contenido seleccionado
+            const contenidoId = `config${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+            const contenido = document.getElementById(contenidoId);
+            if (contenido) {
+                contenido.classList.remove('hidden');
+            }
+            
+            // Activar botón seleccionado
+            const btnId = `tabConfig${tab.charAt(0).toUpperCase() + tab.slice(1)}`;
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.classList.add('border-b-2', 'border-blue-600', 'text-blue-600');
+                btn.classList.remove('text-gray-600');
+            }
+            
+            // Cargar datos según tab
+            if (tab === 'productos') {
+                cargarProductosConfiguracion();
+            }
+        }
+
+        async function cargarProductosConfiguracion() {
+            const container = document.getElementById('listaProductos');
+            if (!container) return;
+            
+            try {
+                console.log('🧴 Cargando productos...');
+                
+                const { data: productos, error } = await supabase
+                    .from('productos')
+                    .select('*')
+                    .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+                    .order('nombre', { ascending: true });
+                
+                if (error) throw error;
+                
+                if (!productos || productos.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-3"></i>
+                            <p>No hay productos configurados</p>
+                            <p class="text-sm mt-2">Agrega tu primer producto usando el botón de arriba</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Detectar productos con stock bajo
+                const stockBajo = productos.filter(p => p.activo && p.stock_actual < 5);
+                const alertasContainer = document.getElementById('alertasStockBajo');
+                
+                if (stockBajo.length > 0) {
+                    alertasContainer.innerHTML = `
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3"></i>
+                                <div class="flex-1">
+                                    <p class="font-semibold text-yellow-800 mb-2">⚠️ Productos con stock bajo:</p>
+                                    <ul class="text-sm text-yellow-700 space-y-1">
+                                        ${stockBajo.map(p => `<li>• <strong>${p.nombre}</strong>: Quedan ${p.stock_actual} unidades</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    alertasContainer.innerHTML = '';
+                }
+                
+                // Generar tabla
+                let html = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Precio</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                `;
+                
+                productos.forEach(producto => {
+                    const estadoBadge = producto.activo 
+                        ? '<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">✅ Activo</span>'
+                        : '<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">⛔ Inactivo</span>';
+                    
+                    const stockBadge = producto.stock_actual < 5
+                        ? `<span class="text-red-600 font-bold">${producto.stock_actual} ⚠️</span>`
+                        : `<span class="text-gray-700">${producto.stock_actual}</span>`;
+                    
+                    html += `
+                        <tr>
+                            <td class="px-4 py-3 text-sm font-medium text-gray-900">${producto.nombre}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">$${(producto.precio_venta || 0).toLocaleString('es-CL')}</td>
+                            <td class="px-4 py-3 text-sm">${stockBadge}</td>
+                            <td class="px-4 py-3 text-sm">${estadoBadge}</td>
+                            <td class="px-4 py-3 text-sm space-x-2">
+                                <button onclick="mostrarModalEditarProducto('${producto.id}')" 
+                                    class="text-blue-600 hover:text-blue-800 font-medium">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button onclick="mostrarModalAjustarStock('${producto.id}', '${producto.nombre}', ${producto.stock_actual})" 
+                                    class="text-purple-600 hover:text-purple-800 font-medium">
+                                    <i class="fas fa-box"></i> Stock
+                                </button>
+                                <button onclick="toggleEstadoProducto('${producto.id}', ${producto.activo})" 
+                                    class="text-${producto.activo ? 'red' : 'green'}-600 hover:text-${producto.activo ? 'red' : 'green'}-800 font-medium">
+                                    <i class="fas fa-${producto.activo ? 'times-circle' : 'check-circle'}"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `</tbody></table></div>`;
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                container.innerHTML = '<div class="bg-red-100 p-4 rounded-lg text-red-700 text-center">❌ Error al cargar productos</div>';
+            }
+        }
+
+        function mostrarModalAgregarProducto() {
+            const modalHTML = `
+                <div id="modalProducto" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">➕ Nuevo Producto</h3>
+                            <button onclick="cerrarModalProducto()" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <form id="formProducto">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                                    <input type="text" id="nombreProducto" class="w-full px-4 py-2 border rounded-lg" placeholder="Ej: Gel Ultra Hold" required>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Precio *</label>
+                                    <input type="number" id="precioProducto" min="0" step="500" class="w-full px-4 py-2 border rounded-lg" placeholder="8000" required>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Stock Inicial *</label>
+                                        <input type="number" id="stockProducto" min="0" class="w-full px-4 py-2 border rounded-lg" placeholder="20" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                                        <input type="text" id="descripcionProducto" class="w-full px-4 py-2 border rounded-lg" placeholder="Opcional">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex space-x-3 mt-6">
+                                <button type="button" onclick="cerrarModalProducto()" class="flex-1 bg-gray-500 text-white py-2 rounded-lg">
+                                    Cancelar
+                                </button>
+                                <button type="submit" class="flex-1 bg-green-600 text-white py-2 rounded-lg">
+                                    ➕ Agregar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            document.getElementById('formProducto').addEventListener('submit', guardarNuevoProducto);
+        }
+
+        async function guardarNuevoProducto(e) {
+            e.preventDefault();
+            
+            const nombre = document.getElementById('nombreProducto').value.trim();
+            const precio = parseFloat(document.getElementById('precioProducto').value);
+            const stock = parseInt(document.getElementById('stockProducto').value);
+            const descripcion = document.getElementById('descripcionProducto').value.trim();
+            
+            try {
+                showLoading();
+                
+                const nuevoProducto = {
+                    nombre: nombre,
+                    precio_venta: precio,
+                    stock_actual: stock,
+                    descripcion: descripcion || null,
+                    barberia_id: window.CURRENT_BARBERIA_ID,
+                    activo: true,
+                    orden: 999
+                };
+                
+                const { data, error } = await supabase
+                    .from('productos')
+                    .insert([nuevoProducto])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert(`✅ Producto "${nombre}" agregado correctamente!`);
+                cerrarModalProducto();
+                cargarProductosConfiguracion();
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('❌ Error al guardar producto');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function mostrarModalEditarProducto(productoId) {
+            try {
+                showLoading();
+                
+                const { data: producto, error } = await supabase
+                    .from('productos')
+                    .select('*')
+                    .eq('id', productoId)
+                    .single();
+                
+                hideLoading();
+                
+                if (error || !producto) {
+                    alert('❌ No se pudo cargar el producto');
+                    return;
+                }
+                
+                const modalHTML = `
+                    <div id="modalProducto" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-bold">✏️ Editar Producto</h3>
+                                <button onclick="cerrarModalProducto()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            
+                            <form id="formProducto">
+                                <input type="hidden" id="productoId" value="${producto.id}">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre *</label>
+                                        <input type="text" id="nombreProducto" value="${producto.nombre}" class="w-full px-4 py-2 border rounded-lg" required>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Precio *</label>
+                                        <input type="number" id="precioProducto" value="${producto.precio_venta}" min="0" step="500" class="w-full px-4 py-2 border rounded-lg" required>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                                        <input type="text" id="descripcionProducto" value="${producto.descripcion || ''}" class="w-full px-4 py-2 border rounded-lg">
+                                    </div>
+                                    
+                                    <div class="bg-gray-50 p-3 rounded">
+                                        <p class="text-sm text-gray-600">Stock actual: <strong>${producto.stock_actual}</strong> unidades</p>
+                                        <p class="text-xs text-gray-500 mt-1">Usa el botón "Stock" para ajustar</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex space-x-3 mt-6">
+                                    <button type="button" onclick="cerrarModalProducto()" class="flex-1 bg-gray-500 text-white py-2 rounded-lg">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-lg">
+                                        💾 Guardar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                document.getElementById('formProducto').addEventListener('submit', guardarEdicionProducto);
+                
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error del sistema');
+            }
+        }
+
+        async function guardarEdicionProducto(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('productoId').value;
+            const nombre = document.getElementById('nombreProducto').value.trim();
+            const precio = parseFloat(document.getElementById('precioProducto').value);
+            const descripcion = document.getElementById('descripcionProducto').value.trim();
+            
+            try {
+                showLoading();
+                
+                const { error } = await supabase
+                    .from('productos')
+                    .update({
+                        nombre: nombre,
+                        precio_venta: precio,
+                        descripcion: descripcion || null
+                    })
+                    .eq('id', id)
+                    .eq('barberia_id', window.CURRENT_BARBERIA_ID);
+                
+                if (error) throw error;
+                
+                alert(`✅ Producto "${nombre}" actualizado!`);
+                cerrarModalProducto();
+                cargarProductosConfiguracion();
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('❌ Error al actualizar');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function mostrarModalAjustarStock(productoId, nombre, stockActual) {
+            const modalHTML = `
+                <div id="modalStock" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">📦 Ajustar Stock</h3>
+                            <button onclick="cerrarModalStock()" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-gray-700 mb-2"><strong>Producto:</strong> ${nombre}</p>
+                            <p class="text-gray-700"><strong>Stock actual:</strong> <span class="text-lg font-bold text-blue-600">${stockActual}</span> unidades</p>
+                        </div>
+                        
+                        <form id="formStock">
+                            <input type="hidden" id="productoIdStock" value="${productoId}">
+                            <input type="hidden" id="stockActualHidden" value="${stockActual}">
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Ajuste:</label>
+                                    <select id="tipoAjuste" class="w-full px-4 py-2 border rounded-lg" onchange="actualizarVistaStock()">
+                                        <option value="agregar">➕ Agregar unidades (compra)</option>
+                                        <option value="quitar">➖ Quitar unidades (merma/error)</option>
+                                        <option value="establecer">🔢 Establecer cantidad exacta</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad:</label>
+                                    <input type="number" id="cantidadStock" min="1" class="w-full px-4 py-2 border rounded-lg" placeholder="0" required>
+                                </div>
+                                
+                                <div id="vistaPrevia" class="bg-blue-50 p-3 rounded-lg">
+                                    <p class="text-sm text-blue-800">Ingresa una cantidad para ver el resultado</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex space-x-3 mt-6">
+                                <button type="button" onclick="cerrarModalStock()" class="flex-1 bg-gray-500 text-white py-2 rounded-lg">
+                                    Cancelar
+                                </button>
+                                <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg">
+                                    💾 Guardar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            document.getElementById('formStock').addEventListener('submit', guardarAjusteStock);
+            document.getElementById('cantidadStock').addEventListener('input', actualizarVistaStock);
+        }
+
+        function actualizarVistaStock() {
+            const tipo = document.getElementById('tipoAjuste').value;
+            const cantidad = parseInt(document.getElementById('cantidadStock').value) || 0;
+            const stockActual = parseInt(document.getElementById('stockActualHidden').value);
+            const vista = document.getElementById('vistaPrevia');
+            
+            if (cantidad === 0) {
+                vista.innerHTML = '<p class="text-sm text-blue-800">Ingresa una cantidad para ver el resultado</p>';
+                return;
+            }
+            
+            let nuevoStock = stockActual;
+            let mensaje = '';
+            
+            if (tipo === 'agregar') {
+                nuevoStock = stockActual + cantidad;
+                mensaje = `Stock actual: ${stockActual} + ${cantidad} = <strong>${nuevoStock}</strong> unidades`;
+            } else if (tipo === 'quitar') {
+                nuevoStock = Math.max(0, stockActual - cantidad);
+                mensaje = `Stock actual: ${stockActual} - ${cantidad} = <strong>${nuevoStock}</strong> unidades`;
+            } else if (tipo === 'establecer') {
+                nuevoStock = cantidad;
+                mensaje = `Nuevo stock: <strong>${nuevoStock}</strong> unidades`;
+            }
+            
+            vista.innerHTML = `<p class="text-sm text-blue-800">${mensaje}</p>`;
+        }
+
+        async function guardarAjusteStock(e) {
+            e.preventDefault();
+            
+            const productoId = document.getElementById('productoIdStock').value;
+            const tipo = document.getElementById('tipoAjuste').value;
+            const cantidad = parseInt(document.getElementById('cantidadStock').value);
+            const stockActual = parseInt(document.getElementById('stockActualHidden').value);
+            
+            let nuevoStock = stockActual;
+            
+            if (tipo === 'agregar') {
+                nuevoStock = stockActual + cantidad;
+            } else if (tipo === 'quitar') {
+                nuevoStock = Math.max(0, stockActual - cantidad);
+            } else if (tipo === 'establecer') {
+                nuevoStock = cantidad;
+            }
+            
+            try {
+                showLoading();
+                
+                const { error } = await supabase
+                    .from('productos')
+                    .update({ stock_actual: nuevoStock })
+                    .eq('id', productoId)
+                    .eq('barberia_id', window.CURRENT_BARBERIA_ID);
+                
+                if (error) throw error;
+                
+                alert(`✅ Stock actualizado: ${stockActual} → ${nuevoStock} unidades`);
+                cerrarModalStock();
+                cargarProductosConfiguracion();
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('❌ Error al actualizar stock');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function toggleEstadoProducto(productoId, estadoActual) {
+            const accion = estadoActual ? 'desactivar' : 'activar';
+            
+            if (!confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} este producto?`)) return;
+            
+            try {
+                showLoading();
+                
+                const { error } = await supabase
+                    .from('productos')
+                    .update({ activo: !estadoActual })
+                    .eq('id', productoId)
+                    .eq('barberia_id', window.CURRENT_BARBERIA_ID);
+                
+                if (error) throw error;
+                
+                alert(`✅ Producto ${accion}do correctamente!`);
+                cargarProductosConfiguracion();
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('❌ Error al cambiar estado');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function cerrarModalProducto() {
+            const modal = document.getElementById('modalProducto');
+            if (modal) modal.remove();
+        }
+
+        function cerrarModalStock() {
+            const modal = document.getElementById('modalStock');
+            if (modal) modal.remove();
+        }
+        // ===============================
         // LOGOUT
         // ===============================
         function logout() {
