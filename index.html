@@ -632,6 +632,9 @@ function mostrarMensajeBloqueo() {
                 case 'cierre':
                     loadCierreCaja();
                     break;
+                case 'gastos':
+                    loadGastos();
+                    break;
                 case 'estadisticas':
                     loadEstadisticas();
                     break;
@@ -2916,6 +2919,376 @@ function mostrarTablaHistorial(adelantos) {
     `;
     
     contenido.innerHTML = html;
+}
+
+        // ===============================
+// PESTAÑA: GASTOS
+// ===============================
+function loadGastos() {
+    console.log('💰 Cargando gastos...');
+    
+    // Verificar que sea admin
+    if (userRole !== 'admin') {
+        document.getElementById('contentArea').innerHTML = '<div class="text-red-600">❌ Sin permisos de administrador</div>';
+        return;
+    }
+    
+    document.getElementById('contentArea').innerHTML = `
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-2xl font-bold mb-6">
+                <i class="fas fa-wallet mr-2"></i>Registro de Gastos
+            </h2>
+            
+            <!-- Formulario de Registro -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="text-lg font-bold mb-4">➕ Registrar Nuevo Gasto</h3>
+                
+                <form id="formGasto" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Fecha *</label>
+                            <input type="date" id="fechaGasto" class="w-full px-4 py-2 border border-gray-300 rounded-lg" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Categoría *</label>
+                            <select id="categoriaGasto" class="w-full px-4 py-2 border border-gray-300 rounded-lg" required>
+                                <option value="">Seleccionar...</option>
+                                <option value="arriendo">🏠 Arriendo</option>
+                                <option value="servicios">⚡ Servicios (luz, agua, internet)</option>
+                                <option value="insumos">✂️ Insumos (shampoo, toallas)</option>
+                                <option value="productos">🧴 Productos (para reventa)</option>
+                                <option value="otros">📦 Otros</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Monto *</label>
+                            <input type="number" id="montoGasto" min="0" step="100" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="$" required>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Descripción (opcional)</label>
+                        <input type="text" id="descripcionGasto" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Arriendo local mes de octubre">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                        <i class="fas fa-save mr-2"></i>Registrar Gasto
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Filtros -->
+            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                <h3 class="text-lg font-bold mb-4">🔍 Filtrar Gastos</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Período:</label>
+                        <select id="periodoGastos" class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="cargarListaGastos()">
+                            <option value="mes">Este Mes</option>
+                            <option value="semana">Esta Semana</option>
+                            <option value="rango">Rango Personalizado</option>
+                        </select>
+                    </div>
+                    
+                    <div id="filtroRangoGastos" style="display:none;" class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Rango de fechas:</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="fechaDesdeGastos" class="px-4 py-2 border border-gray-300 rounded-lg" onchange="cargarListaGastos()">
+                            <input type="date" id="fechaHastaGastos" class="px-4 py-2 border border-gray-300 rounded-lg" onchange="cargarListaGastos()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de Gastos -->
+            <div id="listaGastos" class="bg-white rounded-lg shadow p-6">
+                <div class="text-center py-8">
+                    <div class="loading-spinner mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Cargando gastos...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Configurar fecha inicial (hoy)
+    document.getElementById('fechaGasto').value = getFechaChile();
+    
+    // Agregar evento al formulario
+    document.getElementById('formGasto').addEventListener('submit', registrarGasto);
+    
+    // Agregar evento al selector de período
+    document.getElementById('periodoGastos').addEventListener('change', function() {
+        const periodo = this.value;
+        const filtroRango = document.getElementById('filtroRangoGastos');
+        
+        if (periodo === 'rango') {
+            filtroRango.style.display = 'block';
+            
+            // Configurar fechas por defecto (mes actual)
+            const hoy = new Date();
+            const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+            
+            document.getElementById('fechaDesdeGastos').value = primerDia.toISOString().split('T')[0];
+            document.getElementById('fechaHastaGastos').value = ultimoDia.toISOString().split('T')[0];
+        } else {
+            filtroRango.style.display = 'none';
+        }
+    });
+    
+    // Cargar gastos inicial
+    cargarListaGastos();
+}
+
+async function registrarGasto(e) {
+    e.preventDefault();
+    
+    const fecha = document.getElementById('fechaGasto').value;
+    const categoria = document.getElementById('categoriaGasto').value;
+    const monto = parseFloat(document.getElementById('montoGasto').value);
+    const descripcion = document.getElementById('descripcionGasto').value.trim();
+    
+    // Validaciones
+    if (!fecha || !categoria || !monto || monto <= 0) {
+        alert('⚠️ Por favor completa todos los campos obligatorios');
+        return;
+    }
+    
+    try {
+        showLoading();
+        console.log('💾 Registrando gasto:', { fecha, categoria, monto });
+        
+        const nuevoGasto = {
+            barberia_id: window.CURRENT_BARBERIA_ID,
+            fecha: fecha,
+            categoria: categoria,
+            monto: monto,
+            descripcion: descripcion || null,
+            registrado_por_id: currentUser.id,
+            registrado_por_nombre: currentUser.nombre,
+            created_at: getTimestampChile()
+        };
+        
+        const { data, error } = await supabase
+            .from('gastos')
+            .insert([nuevoGasto])
+            .select();
+        
+        if (error) {
+            console.error('❌ Error de Supabase:', error);
+            alert('❌ Error al guardar: ' + error.message);
+            hideLoading();
+            return;
+        }
+        
+        console.log('✅ Gasto registrado:', data);
+        alert(`✅ Gasto registrado exitosamente!\n\nCategoría: ${categoria}\nMonto: $${monto.toLocaleString('es-CL')}`);
+        
+        // Limpiar formulario
+        document.getElementById('formGasto').reset();
+        document.getElementById('fechaGasto').value = getFechaChile();
+        
+        // Recargar lista
+        cargarListaGastos();
+        
+    } catch (error) {
+        console.error('❌ Error crítico:', error);
+        alert('❌ Error del sistema: ' + error.message);
+    }
+    
+    hideLoading();
+}
+
+async function cargarListaGastos() {
+    const container = document.getElementById('listaGastos');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="text-center py-8"><div class="loading-spinner mx-auto"></div><p class="mt-4 text-gray-600">Cargando gastos...</p></div>';
+    
+    try {
+        console.log('🔍 Cargando lista de gastos...');
+        
+        const periodo = document.getElementById('periodoGastos').value;
+        let fechaDesde, fechaHasta;
+        
+        const hoy = new Date();
+        
+        if (periodo === 'mes') {
+            fechaDesde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            fechaHasta = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+        } else if (periodo === 'semana') {
+            const diaSemana = hoy.getDay();
+            const diasDesdeInicio = diaSemana === 0 ? 6 : diaSemana - 1;
+            
+            fechaDesde = new Date(hoy);
+            fechaDesde.setDate(hoy.getDate() - diasDesdeInicio);
+            
+            fechaHasta = new Date(fechaDesde);
+            fechaHasta.setDate(fechaDesde.getDate() + 6);
+        } else if (periodo === 'rango') {
+            const desdeInput = document.getElementById('fechaDesdeGastos').value;
+            const hastaInput = document.getElementById('fechaHastaGastos').value;
+            
+            if (!desdeInput || !hastaInput) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Por favor selecciona ambas fechas</p>';
+                return;
+            }
+            
+            fechaDesde = new Date(desdeInput + 'T00:00:00');
+            fechaHasta = new Date(hastaInput + 'T00:00:00');
+        }
+        
+        const fechaDesdeStr = fechaDesde.toISOString().split('T')[0];
+        const fechaHastaStr = fechaHasta.toISOString().split('T')[0];
+        
+        console.log(`📅 Consultando desde ${fechaDesdeStr} hasta ${fechaHastaStr}`);
+        
+        const { data: gastos, error } = await supabase
+            .from('gastos')
+            .select('*')
+            .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+            .gte('fecha', fechaDesdeStr)
+            .lte('fecha', fechaHastaStr)
+            .order('fecha', { ascending: false });
+        
+        if (error) throw error;
+        
+        mostrarListaGastos(gastos || [], fechaDesdeStr, fechaHastaStr);
+        
+    } catch (error) {
+        console.error('❌ Error cargando gastos:', error);
+        container.innerHTML = '<div class="bg-red-100 p-4 rounded-lg text-red-700 text-center">❌ Error al cargar gastos</div>';
+    }
+}
+
+function mostrarListaGastos(gastos, fechaDesde, fechaHasta) {
+    const container = document.getElementById('listaGastos');
+    
+    if (!gastos || gastos.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p>No hay gastos registrados en este período</p>
+                <p class="text-sm mt-2">${fechaDesde} al ${fechaHasta}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Calcular totales
+    const totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
+    
+    // Agrupar por categoría
+    const porCategoria = {};
+    gastos.forEach(g => {
+        porCategoria[g.categoria] = (porCategoria[g.categoria] || 0) + parseFloat(g.monto || 0);
+    });
+    
+    // Iconos por categoría
+    const iconos = {
+        'arriendo': '🏠',
+        'servicios': '⚡',
+        'insumos': '✂️',
+        'productos': '🧴',
+        'otros': '📦'
+    };
+    
+    let html = `
+        <div class="mb-6">
+            <h3 class="text-lg font-bold mb-4">💰 Resumen del Período</h3>
+            <p class="text-gray-600 text-sm mb-4">${fechaDesde} al ${fechaHasta}</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                ${Object.entries(porCategoria).map(([cat, monto]) => `
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="text-sm text-gray-600">${iconos[cat] || '📦'} ${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>
+                        <div class="text-lg font-bold text-gray-900">$${monto.toLocaleString('es-CL')}</div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="bg-gradient-to-r from-red-500 to-orange-600 text-white p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <span class="text-lg font-semibold">💸 Total Gastado:</span>
+                    <span class="text-2xl font-bold">$${totalGastos.toLocaleString('es-CL')}</span>
+                </div>
+            </div>
+        </div>
+        
+        <h3 class="text-lg font-bold mb-4">📋 Detalle de Gastos (${gastos.length})</h3>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+    `;
+    
+    gastos.forEach(gasto => {
+        html += `
+            <tr>
+                <td class="px-4 py-3 text-sm">${gasto.fecha}</td>
+                <td class="px-4 py-3 text-sm">${iconos[gasto.categoria] || '📦'} ${gasto.categoria}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${gasto.descripcion || '-'}</td>
+                <td class="px-4 py-3 text-sm font-semibold text-red-600">$${parseFloat(gasto.monto).toLocaleString('es-CL')}</td>
+                <td class="px-4 py-3 text-sm">
+                    <button onclick="confirmarEliminarGasto('${gasto.id}', '${gasto.categoria}', ${gasto.monto})" 
+                        class="text-red-600 hover:text-red-800 font-medium">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+async function confirmarEliminarGasto(gastoId, categoria, monto) {
+    if (!confirm(`¿Eliminar este gasto?\n\nCategoría: ${categoria}\nMonto: $${parseFloat(monto).toLocaleString('es-CL')}\n\n⚠️ Esta acción NO se puede deshacer`)) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        console.log('🗑️ Eliminando gasto:', gastoId);
+        
+        const { error } = await supabase
+            .from('gastos')
+            .delete()
+            .eq('id', gastoId)
+            .eq('barberia_id', window.CURRENT_BARBERIA_ID);
+        
+        if (error) {
+            console.error('❌ Error:', error);
+            alert('❌ Error al eliminar: ' + error.message);
+        } else {
+            alert('✅ Gasto eliminado correctamente');
+            cargarListaGastos();
+        }
+        
+    } catch (error) {
+        console.error('❌ Error crítico:', error);
+        alert('❌ Error del sistema');
+    } finally {
+        hideLoading();
+    }
 }
     // ===============================
         // PESTAÑA: CIERRE DE CAJA
