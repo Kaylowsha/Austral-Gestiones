@@ -3439,20 +3439,18 @@ function mostrarTablaHistorial(adelantos) {
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 p-4 rounded-lg">
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-medium">💳 Cuenta RUT:</span>
-                                        <span class="text-xl font-bold text-blue-600">$${(porFormaPago['Cuenta RUT'] || 0).toLocaleString('es-CL')}</span>
-                                    </div>
                                     <div class="flex justify-between">
+                            <span>💳 Cuenta RUT:</span>
+                            <span class="text-xl font-bold text-blue-600">$${(porFormaPago['Cuenta RUT'] || 0).toLocaleString('es-CL')}</span>
+                        </div>
+                        <div class="flex justify-between">
                             <span>💳 Transbank:</span>
                             <span class="text-xl font-bold text-indigo-600">$${(porFormaPago['Transbank'] || 0).toLocaleString('es-CL')}</span>
                         </div>
-                                
-                                <div class="bg-purple-50 p-4 rounded-lg">
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-medium">📱 Mercado Pago:</span>
-                                        <span class="text-xl font-bold text-purple-600">$${(porFormaPago['Mercado Pago'] || 0).toLocaleString('es-CL')}</span>
-                                    </div>
+                        <div class="flex justify-between">
+                            <span>📱 Mercado Pago:</span>
+                            <span class="text-xl font-bold text-purple-600">$${(porFormaPago['Mercado Pago'] || 0).toLocaleString('es-CL')}</span>
+                        </div>
                                 </div>
                             </div>
                         </div>
