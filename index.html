@@ -3591,8 +3591,9 @@ function mostrarTablaHistorial(adelantos) {
                 
                 console.log(`✅ ${servicios.length} servicios para analizar`);
                 
-                // Procesar y mostrar cada sección
+              // Procesar y mostrar cada sección
                 mostrarTopServiciosOptimizado(servicios);
+                mostrarTopProductosOptimizado(servicios);
                 mostrarMetodosPagoOptimizado(servicios);
                 mostrarProductividadOptimizada(servicios);
                 mostrarTendenciaOptimizada(servicios);
@@ -3641,6 +3642,236 @@ function mostrarTablaHistorial(adelantos) {
             window.serviciosGlobalesStats = servicios; // Guardar para uso posterior
             filtrarTopServicios('7d');
         }
+
+// ===============================
+// TOP PRODUCTOS MÁS VENDIDOS
+// ===============================
+
+function mostrarTopProductosOptimizado(servicios) {
+    const container = document.getElementById('topProductos');
+    
+    container.innerHTML = `
+        <!-- Botones de Filtro -->
+        <div class="flex flex-wrap gap-2 mb-4 justify-center">
+            <button onclick="filtrarTopProductos('7d')" id="btn-prod-7d" class="filtro-prod-btn filtro-prod-activo px-3 py-1 text-sm rounded-full bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
+                7 días
+            </button>
+            <button onclick="filtrarTopProductos('30d')" id="btn-prod-30d" class="filtro-prod-btn px-3 py-1 text-sm rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors">
+                30 días
+            </button>
+            <button onclick="filtrarTopProductos('3m')" id="btn-prod-3m" class="filtro-prod-btn px-3 py-1 text-sm rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors">
+                3 meses
+            </button>
+            <button onclick="filtrarTopProductos('1y')" id="btn-prod-1y" class="filtro-prod-btn px-3 py-1 text-sm rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors">
+                1 año
+            </button>
+            <button onclick="filtrarTopProductos('todo')" id="btn-prod-todo" class="filtro-prod-btn px-3 py-1 text-sm rounded-full bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition-colors">
+                Siempre
+            </button>
+        </div>
+        
+        <!-- Contenedor del Gráfico -->
+        <div id="graficoTopProductos">
+            <div class="text-center py-4">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="mt-2 text-gray-600">Cargando productos...</p>
+            </div>
+        </div>
+    `;
+    
+    // Guardar servicios y cargar datos inicial (7 días)
+    window.serviciosGlobalesProductos = servicios;
+    filtrarTopProductos('7d');
+}
+
+async function filtrarTopProductos(periodo) {
+    console.log(`🧴 Filtrando top productos por: ${periodo}`);
+    
+    // Actualizar estado visual de botones
+    document.querySelectorAll('.filtro-prod-btn').forEach(btn => {
+        btn.classList.remove('filtro-prod-activo', 'bg-blue-600', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-700');
+    });
+    
+    const btnActivo = document.getElementById(`btn-prod-${periodo}`);
+    if (btnActivo) {
+        btnActivo.classList.add('filtro-prod-activo', 'bg-blue-600', 'text-white');
+        btnActivo.classList.remove('bg-gray-200', 'text-gray-700');
+    }
+    
+    // Mostrar loading
+    const container = document.getElementById('graficoTopProductos');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <div class="loading-spinner mx-auto"></div>
+            <p class="mt-2 text-gray-600">Analizando ${periodo === '7d' ? '7 días' : periodo === '30d' ? '30 días' : periodo === '3m' ? '3 meses' : periodo === '1y' ? '1 año' : 'todos los datos'}...</p>
+        </div>
+    `;
+    
+    try {
+        // Calcular fechas según el período
+        const hoy = new Date();
+        let fechaInicio;
+        
+        switch(periodo) {
+            case '7d':
+                fechaInicio = new Date();
+                fechaInicio.setDate(hoy.getDate() - 7);
+                break;
+            case '30d':
+                fechaInicio = new Date();
+                fechaInicio.setDate(hoy.getDate() - 30);
+                break;
+            case '3m':
+                fechaInicio = new Date();
+                fechaInicio.setMonth(hoy.getMonth() - 3);
+                break;
+            case '1y':
+                fechaInicio = new Date();
+                fechaInicio.setFullYear(hoy.getFullYear() - 1);
+                break;
+            case 'todo':
+                fechaInicio = new Date('2020-01-01');
+                break;
+        }
+        
+        const fechaFin = hoy.toISOString().split('T')[0];
+        const fechaInicioStr = fechaInicio.toISOString().split('T')[0];
+        
+        console.log(`📅 Consultando productos desde ${fechaInicioStr} hasta ${fechaFin}`);
+        
+        // Cargar servicios del período
+        const { data: servicios, error } = await supabase
+            .from('citas')
+            .select('productos_vendidos')
+            .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+            .gte('fecha', fechaInicioStr)
+            .lte('fecha', fechaFin);
+        
+        if (error) throw error;
+        
+        if (!servicios || servicios.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <div class="text-4xl mb-2">🧴</div>
+                    <p>No hay productos vendidos en ${periodo === '7d' ? 'los últimos 7 días' : periodo === '30d' ? 'los últimos 30 días' : periodo === '3m' ? 'los últimos 3 meses' : periodo === '1y' ? 'el último año' : 'el histórico'}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Procesar productos vendidos
+        const productosAgrupados = {};
+        let totalProductosVendidos = 0;
+        
+        servicios.forEach(s => {
+            if (s.productos_vendidos) {
+                try {
+                    const productos = typeof s.productos_vendidos === 'string' 
+                        ? JSON.parse(s.productos_vendidos) 
+                        : s.productos_vendidos;
+                    
+                    if (Array.isArray(productos)) {
+                        productos.forEach(p => {
+                            const nombre = p.nombre;
+                            const cantidad = p.cantidad || 1;
+                            const precio = parseFloat(p.precio || 0);
+                            
+                            if (!productosAgrupados[nombre]) {
+                                productosAgrupados[nombre] = {
+                                    cantidad: 0,
+                                    monto: 0
+                                };
+                            }
+                            
+                            productosAgrupados[nombre].cantidad += cantidad;
+                            productosAgrupados[nombre].monto += precio * cantidad;
+                            totalProductosVendidos += cantidad;
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parseando productos:', e);
+                }
+            }
+        });
+        
+        // Verificar si hay productos
+        if (Object.keys(productosAgrupados).length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <div class="text-4xl mb-2">🧴</div>
+                    <p>No hay productos vendidos en este período</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Convertir a array y ordenar por cantidad
+        const top5 = Object.entries(productosAgrupados)
+            .sort(([,a], [,b]) => b.cantidad - a.cantidad)
+            .slice(0, 5);
+        
+        // Generar gráfico
+        const maxCantidad = top5[0]?.[1]?.cantidad || 1;
+        
+        let html = '<div class="space-y-3">';
+        top5.forEach(([nombre, data], index) => {
+            const porcentaje = Math.round((data.cantidad / totalProductosVendidos) * 100);
+            const barWidth = Math.round((data.cantidad / maxCantidad) * 100);
+            
+            // Colores diferentes para cada barra
+            const colores = [
+                'from-purple-400 to-purple-600',
+                'from-pink-400 to-pink-600', 
+                'from-indigo-400 to-indigo-600',
+                'from-blue-400 to-blue-600',
+                'from-teal-400 to-teal-600'
+            ];
+            const color = colores[index] || 'from-gray-400 to-gray-600';
+            
+            const nombreCorto = nombre.length > 30 ? nombre.substring(0, 30) + '...' : nombre;
+            
+            html += `
+                <div class="mb-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="text-sm font-medium text-gray-700 flex-1" title="${nombre}">
+                            ${nombreCorto}
+                        </div>
+                        <div class="text-sm font-bold text-gray-600 ml-2">${data.cantidad} unid. (${porcentaje}%) - $${data.monto.toLocaleString('es-CL')}</div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div class="bg-gradient-to-r ${color} h-4 rounded-full transition-all duration-1000 flex items-center justify-end pr-2" style="width: ${barWidth}%">
+                            <span class="text-xs text-white font-semibold">${data.cantidad}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        
+        // Agregar resumen del período
+        html += `
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <div class="text-xs text-gray-500 text-center">
+                    🧴 Total analizado: <span class="font-semibold">${totalProductosVendidos} productos vendidos</span> en 
+                    <span class="font-semibold">${periodo === '7d' ? '7 días' : periodo === '30d' ? '30 días' : periodo === '3m' ? '3 meses' : periodo === '1y' ? '1 año' : 'todo el histórico'}</span>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('❌ Error filtrando productos:', error);
+        container.innerHTML = `
+            <div class="text-center py-4 text-red-600">
+                <div class="text-2xl mb-2">⚠️</div>
+                <p>Error al cargar datos del período</p>
+            </div>
+        `;
+    }
+}
         
         async function filtrarTopServicios(periodo) {
             console.log(`📊 Filtrando top servicios por: ${periodo}`);
