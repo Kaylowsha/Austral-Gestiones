@@ -3411,20 +3411,36 @@ function mostrarTablaHistorial(adelantos) {
             html += `
                         </div>
                         
-                        <!-- MONTO A PAGAR - Destacado -->
+                       <!-- MONTO A PAGAR - Destacado -->
                         <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl mb-6 shadow-lg">
                             <div class="text-center">
                                 <div class="text-lg font-semibold mb-2">💰 MONTO A PAGAR</div>
-                                <div class="text-4xl font-bold">${vista === 'diaria' ? 
-                                    `$${totalRecaudado.toLocaleString('es-CL')}` : 
-                                    `$${montoAPagar.toLocaleString('es-CL')}`}</div>
-                                ${vista !== 'diaria' ? `
+                                <div class="text-4xl font-bold">$${montoAPagar.toLocaleString('es-CL')}</div>
+                                ${vista !== 'diaria' && totalAdelantos > 0 ? `
                                     <div class="text-purple-100 mt-2 text-sm">
-                                        (Recaudado: $${totalRecaudado.toLocaleString('es-CL')} - Adelantos: $${totalAdelantos.toLocaleString('es-CL')})
+                                        Recaudado: $${totalRecaudado.toLocaleString('es-CL')} - Adelantos: $${totalAdelantos.toLocaleString('es-CL')}
+                                        ${comisionTransbank > 0 ? ` - Comisión Transbank: $${comisionTransbank.toLocaleString('es-CL')}` : ''}
+                                    </div>
+                                ` : comisionTransbank > 0 ? `
+                                    <div class="text-purple-100 mt-2 text-sm">
+                                        Recaudado: $${totalRecaudado.toLocaleString('es-CL')} - Comisión Transbank: $${comisionTransbank.toLocaleString('es-CL')}
                                     </div>
                                 ` : ''}
                             </div>
                         </div>
+                        
+                        ${comisionTransbank > 0 ? `
+                        <!-- Detalle Comisión Transbank -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                            <h4 class="font-semibold text-blue-900 mb-2">
+                                💳 Comisión Transbank Descontada
+                            </h4>
+                            <div class="text-sm text-blue-800">
+                                <p>Se descontó el 2.7% de los pagos realizados por Transbank:</p>
+                                <p class="font-bold mt-1">- $${comisionTransbank.toLocaleString('es-CL')}</p>
+                            </div>
+                        </div>
+                        ` : ''}
                         
                         <!-- Desglose por forma de pago -->
                         <div class="border-t pt-6">
