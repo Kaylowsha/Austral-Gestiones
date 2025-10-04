@@ -3695,27 +3695,7 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
             }
         }
         
-       // Obtener gastos si NO es vista diaria
-        let totalGastos = 0;
-        if (vista !== 'diaria') {
-            console.log('💸 Cargando gastos para período...');
-            
-            const { data: gastos, error: errorGastos } = await supabase
-                .from('gastos')
-                .select('monto')
-                .eq('barberia_id', window.CURRENT_BARBERIA_ID)
-                .gte('fecha', fechaInicio)
-                .lte('fecha', fechaFin);
-            
-            if (errorGastos) {
-                console.error('❌ Error cargando gastos:', errorGastos);
-            } else if (gastos) {
-                totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
-                console.log('💸 Gastos del período:', gastos.length, 'Total:', totalGastos);
-            }
-        }
-        
-        const montoAPagar = totalRecaudado - totalAdelantos - totalGastos - comisionTransbank;
+     const montoAPagar = totalRecaudado - totalAdelantos - comisionTransbank;
         
       mostrarCierre({
             vista,
@@ -3725,7 +3705,6 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
             totalRecaudadoSinComision,
             totalServicios,
             totalAdelantos,
-            totalGastos,
             montoAPagar,
             porFormaPago,
             servicios,
@@ -3748,7 +3727,6 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
         totalRecaudadoSinComision,
         totalServicios,
         totalAdelantos,
-        totalGastos,
         montoAPagar,
         porFormaPago,
         servicios,
@@ -3789,22 +3767,17 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
             
             // Mostrar adelantos solo si no es vista diaria
             if (vista !== 'diaria') {
-                html += `
+           html += `
                             <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                                 <div class="text-sm text-yellow-600 mb-1">💸 Adelantos del Período</div>
                                 <div class="text-2xl font-bold text-yellow-900">$${totalAdelantos.toLocaleString('es-CL')}</div>
-                            </div>
-                            
-                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
-                                <div class="text-sm text-red-600 mb-1">💰 Gastos del Período</div>
-                                <div class="text-2xl font-bold text-red-900">$${totalGastos.toLocaleString('es-CL')}</div>
                             </div>
                 `;
             } else {
                 html += `
                             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <div class="text-sm text-gray-600 mb-1">ℹ️ Vista Diaria</div>
-                                <div class="text-lg text-gray-700">Sin adelantos ni gastos</div>
+                                <div class="text-lg text-gray-700">Sin adelantos</div>
                             </div>
                 `;
             }
@@ -3817,9 +3790,10 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
                             <div class="text-center">
                                 <div class="text-lg font-semibold mb-2">💰 MONTO A PAGAR</div>
                                 <div class="text-4xl font-bold">$${montoAPagar.toLocaleString('es-CL')}</div>
-                                ${vista !== 'diaria' && (totalAdelantos > 0 || totalGastos > 0) ? `
+                               ${vista !== 'diaria' && totalAdelantos > 0 ? `
                                     <div class="text-purple-100 mt-2 text-sm">
-                                        Recaudado: $${totalRecaudado.toLocaleString('es-CL')}${totalAdelantos > 0 ? ` - Adelantos: $${totalAdelantos.toLocaleString('es-CL')}` : ''}${totalGastos > 0 ? ` - Gastos: $${totalGastos.toLocaleString('es-CL')}` : ''}${comisionTransbank > 0 ? ` - Comisión Transbank: $${comisionTransbank.toLocaleString('es-CL')}` : ''}
+                                        Recaudado: $${totalRecaudado.toLocaleString('es-CL')} - Adelantos: $${totalAdelantos.toLocaleString('es-CL')}
+                                        ${comisionTransbank > 0 ? ` - Comisión Transbank: $${comisionTransbank.toLocaleString('es-CL')}` : ''}
                                     </div>
                                 ` : comisionTransbank > 0 ? `
                                     <div class="text-purple-100 mt-2 text-sm">
