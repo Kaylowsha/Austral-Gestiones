@@ -3695,7 +3695,27 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
             }
         }
         
-        const montoAPagar = totalRecaudado - totalAdelantos - comisionTransbank;
+       // Obtener gastos si NO es vista diaria
+        let totalGastos = 0;
+        if (vista !== 'diaria') {
+            console.log('💸 Cargando gastos para período...');
+            
+            const { data: gastos, error: errorGastos } = await supabase
+                .from('gastos')
+                .select('monto')
+                .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+                .gte('fecha', fechaInicio)
+                .lte('fecha', fechaFin);
+            
+            if (errorGastos) {
+                console.error('❌ Error cargando gastos:', errorGastos);
+            } else if (gastos) {
+                totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.monto || 0), 0);
+                console.log('💸 Gastos del período:', gastos.length, 'Total:', totalGastos);
+            }
+        }
+        
+        const montoAPagar = totalRecaudado - totalAdelantos - totalGastos - comisionTransbank;
         
         mostrarCierre({
             vista,
