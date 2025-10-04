@@ -3210,11 +3210,29 @@ function mostrarListaGastos(gastos, fechaDesde, fechaHasta) {
                 `).join('')}
             </div>
             
-            <div class="bg-gradient-to-r from-red-500 to-orange-600 text-white p-4 rounded-lg">
+          <div class="bg-gradient-to-r from-red-500 to-orange-600 text-white p-4 rounded-lg mb-4">
                 <div class="flex justify-between items-center">
                     <span class="text-lg font-semibold">💸 Total Gastado:</span>
                     <span class="text-2xl font-bold">$${totalGastos.toLocaleString('es-CL')}</span>
                 </div>
+            </div>
+            
+            <!-- Cuadro Resumen Comparativo -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 class="font-semibold text-blue-900 mb-3">📊 Resumen Comparativo del Período</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">💰 Total Gastado:</span>
+                        <span class="font-bold text-red-600">-$${totalGastos.toLocaleString('es-CL')}</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-blue-300">
+                        <span class="text-blue-800 font-semibold">📈 Impacto en Utilidad:</span>
+                        <span class="font-bold text-blue-900">Resta $${totalGastos.toLocaleString('es-CL')} del total</span>
+                    </div>
+                </div>
+                <p class="text-xs text-blue-600 mt-3">
+                    💡 Estos gastos se restan automáticamente de tus ingresos para calcular tu utilidad real
+                </p>
             </div>
         </div>
         
