@@ -3817,10 +3817,9 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
                             <div class="text-center">
                                 <div class="text-lg font-semibold mb-2">💰 MONTO A PAGAR</div>
                                 <div class="text-4xl font-bold">$${montoAPagar.toLocaleString('es-CL')}</div>
-                                ${vista !== 'diaria' && totalAdelantos > 0 ? `
+                                ${vista !== 'diaria' && (totalAdelantos > 0 || totalGastos > 0) ? `
                                     <div class="text-purple-100 mt-2 text-sm">
-                                        Recaudado: $${totalRecaudado.toLocaleString('es-CL')} - Adelantos: $${totalAdelantos.toLocaleString('es-CL')}
-                                        ${comisionTransbank > 0 ? ` - Comisión Transbank: $${comisionTransbank.toLocaleString('es-CL')}` : ''}
+                                        Recaudado: $${totalRecaudado.toLocaleString('es-CL')}${totalAdelantos > 0 ? ` - Adelantos: $${totalAdelantos.toLocaleString('es-CL')}` : ''}${totalGastos > 0 ? ` - Gastos: $${totalGastos.toLocaleString('es-CL')}` : ''}${comisionTransbank > 0 ? ` - Comisión Transbank: $${comisionTransbank.toLocaleString('es-CL')}` : ''}
                                     </div>
                                 ` : comisionTransbank > 0 ? `
                                     <div class="text-purple-100 mt-2 text-sm">
