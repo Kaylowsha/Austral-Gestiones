@@ -3794,12 +3794,17 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
                                 <div class="text-sm text-yellow-600 mb-1">💸 Adelantos del Período</div>
                                 <div class="text-2xl font-bold text-yellow-900">$${totalAdelantos.toLocaleString('es-CL')}</div>
                             </div>
+                            
+                            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                                <div class="text-sm text-red-600 mb-1">💰 Gastos del Período</div>
+                                <div class="text-2xl font-bold text-red-900">$${totalGastos.toLocaleString('es-CL')}</div>
+                            </div>
                 `;
             } else {
                 html += `
                             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <div class="text-sm text-gray-600 mb-1">ℹ️ Vista Diaria</div>
-                                <div class="text-lg text-gray-700">Sin adelantos</div>
+                                <div class="text-lg text-gray-700">Sin adelantos ni gastos</div>
                             </div>
                 `;
             }
