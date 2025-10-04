@@ -3102,87 +3102,148 @@ function mostrarTablaHistorial(adelantos) {
             }, 100);
         }
         
-        async function cargarDatosCierre() {
-            const contenido = document.getElementById('contenidoCierre');
-            if (!contenido) return;
+    async function cargarDatosCierre() {
+    const contenido = document.getElementById('contenidoCierre');
+    if (!contenido) return;
+    
+    contenido.innerHTML = '<div class="text-center py-8"><div class="loading-spinner mx-auto"></div><p class="mt-4 text-gray-600">💰 Calculando cierre...</p></div>';
+    
+    try {
+        const vista = document.getElementById('vistaCierre').value;
+        const filtro = document.getElementById('selectBarberoCierre')?.value || 'todos';
+        
+        let fechaInicio, fechaFin, fecha;
+        
+        if (vista === 'rango') {
+            fechaInicio = document.getElementById('fechaDesde')?.value;
+            fechaFin = document.getElementById('fechaHasta')?.value;
             
-            contenido.innerHTML = '<div class="text-center py-8"><div class="loading-spinner mx-auto"></div><p class="mt-4 text-gray-600">💰 Calculando cierre...</p></div>';
+            if (!fechaInicio || !fechaFin) {
+                contenido.innerHTML = '<p class="text-gray-500">Por favor selecciona ambas fechas del rango</p>';
+                return;
+            }
+        } else {
+            fecha = document.getElementById('fechaCierre')?.value;
             
-            try {
-                const vista = document.getElementById('vistaCierre').value;
-                const filtro = document.getElementById('selectBarberoCierre')?.value || 'todos';
+            if (!fecha) {
+                contenido.innerHTML = '<p class="text-gray-500">Por favor selecciona una fecha</p>';
+                return;
+            }
+            
+            if (vista === 'diaria') {
+                fechaInicio = fecha;
+                fechaFin = fecha;
+            } else if (vista === 'semanal') {
+                const date = new Date(fecha + 'T00:00:00');
+                const dayOfWeek = date.getDay();
+                const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                 
-                let fechaInicio, fechaFin, fecha;
+                const lunes = new Date(date);
+                lunes.setDate(date.getDate() - diff);
                 
-                // Obtener fechas según la vista
-                if (vista === 'rango') {
-                    fechaInicio = document.getElementById('fechaDesde')?.value;
-                    fechaFin = document.getElementById('fechaHasta')?.value;
-                    
-                    if (!fechaInicio || !fechaFin) {
-                        contenido.innerHTML = '<p class="text-gray-500">Por favor selecciona ambas fechas del rango</p>';
-                        return;
-                    }
-                } else {
-                    fecha = document.getElementById('fechaCierre')?.value;
-                    
-                    if (!fecha) {
-                        contenido.innerHTML = '<p class="text-gray-500">Por favor selecciona una fecha</p>';
-                        return;
-                    }
-                    
-                    if (vista === 'diaria') {
-                        fechaInicio = fecha;
-                        fechaFin = fecha;
-                    } else if (vista === 'semanal') {
-                        // Calcular semana completa (lunes a domingo)
-                        const date = new Date(fecha + 'T00:00:00');
-                        const dayOfWeek = date.getDay();
-                        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                const domingo = new Date(lunes);
+                domingo.setDate(lunes.getDate() + 6);
+                
+                fechaInicio = lunes.toISOString().split('T')[0];
+                fechaFin = domingo.toISOString().split('T')[0];
+            }
+        }
+        
+        console.log(`💰 Cargando cierre: ${vista} | ${fechaInicio} al ${fechaFin}`);
+        
+        let queryServicios = supabase
+            .from('citas')
+            .select('*')
+            .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+            .gte('fecha', fechaInicio)
+            .lte('fecha', fechaFin);
+        
+        if (filtro !== 'todos') {
+            if (filtro === 'mi') {
+                queryServicios = queryServicios.eq('realizado_por_id', currentUser.id);
+            } else {
+                queryServicios = queryServicios.eq('realizado_por_id', filtro);
+            }
+        }
+        
+        const { data: servicios, error } = await queryServicios;
+        if (error) throw error;
+        
+        let totalRecaudadoSinComision = 0;
+        let totalRecaudado = 0;
+        const totalServicios = servicios ? servicios.length : 0;
+        
+        if (servicios) {
+            servicios.forEach(s => {
+                let montoServicio = parseFloat(s.monto_total || 0);
+                
+                if (s.productos_vendidos) {
+                    try {
+                        const productos = typeof s.productos_vendidos === 'string' 
+                            ? JSON.parse(s.productos_vendidos) 
+                            : s.productos_vendidos;
                         
-                        const lunes = new Date(date);
-                        lunes.setDate(date.getDate() - diff);
-                        
-                        const domingo = new Date(lunes);
-                        domingo.setDate(lunes.getDate() + 6);
-                        
-                        fechaInicio = lunes.toISOString().split('T')[0];
-                        fechaFin = domingo.toISOString().split('T')[0];
+                        if (Array.isArray(productos)) {
+                            productos.forEach(p => {
+                                montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error parseando productos:', e);
                     }
                 }
                 
-                console.log(`💰 Cargando cierre: ${vista} | ${fechaInicio} al ${fechaFin}`);
+                totalRecaudadoSinComision += montoServicio;
                 
-                // Cargar servicios
-                let queryServicios = supabase
-                    .from('citas')
-                    .select('*')
-                    .eq('barberia_id', window.CURRENT_BARBERIA_ID)
-                    .gte('fecha', fechaInicio)
-                    .lte('fecha', fechaFin);
-                
-                // Aplicar filtro por barbero
-                if (filtro !== 'todos') {
-                    if (filtro === 'mi') {
-                        queryServicios = queryServicios.eq('realizado_por_id', currentUser.id);
+                if (userRole === 'empleado') {
+                    totalRecaudado += montoServicio * 0.5;
+                } else if (userRole === 'admin') {
+                    if (filtro === 'todos' || filtro === 'mi') {
+                        totalRecaudado += montoServicio;
                     } else {
-                        queryServicios = queryServicios.eq('realizado_por_id', filtro);
+                        totalRecaudado += montoServicio * 0.5;
+                    }
+                }
+            });
+        }
+        
+        const porFormaPago = {};
+        
+        if (userRole === 'admin' && servicios) {
+            servicios.forEach(s => {
+                let montoTotal = parseFloat(s.monto_total || 0);
+                let montoProductos = 0;
+                
+                if (s.productos_vendidos) {
+                    try {
+                        const productos = typeof s.productos_vendidos === 'string' 
+                            ? JSON.parse(s.productos_vendidos) 
+                            : s.productos_vendidos;
+                        
+                        if (Array.isArray(productos)) {
+                            productos.forEach(p => {
+                                montoProductos += parseFloat(p.precio || 0) * (p.cantidad || 1);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error parseando productos:', e);
                     }
                 }
                 
-                const { data: servicios, error } = await queryServicios;
-                if (error) throw error;
+                const montoServicio = montoTotal - montoProductos;
+                let montoFinal = 0;
                 
-                // Calcular totales de servicios
-                const totalRecaudado = servicios ? servicios.reduce((sum, s) => sum + parseFloat(s.monto_total || 0), 0) : 0;
-                const totalServicios = servicios ? servicios.length : 0;
+                if (filtro === 'todos' || filtro === 'mi') {
+                    montoFinal = montoTotal;
+                } else {
+                    montoFinal = (montoServicio * 0.5) + montoProductos;
+                }
                 
-                // Agrupar por forma de pago
-                const porFormaPago = servicios ? servicios.reduce((acc, s) => {
-                    acc[s.forma_pago] = (acc[s.forma_pago] || 0) + parseFloat(s.monto_total || 0);
-                    return acc;
-                }, {}) : {};
-                // Calcular comisión Transbank si está activada
+                const formaPago = s.forma_pago;
+                porFormaPago[formaPago] = (porFormaPago[formaPago] || 0) + montoFinal;
+            });
+        }
+        
         let comisionTransbank = 0;
         const opcionComision = document.querySelector('input[name="comisionTransbank"]:checked')?.value || 'ninguno';
         
@@ -3195,7 +3256,6 @@ function mostrarTablaHistorial(adelantos) {
                     let montoTotal = parseFloat(s.monto_total || 0);
                     let montoProductos = 0;
                     
-                    // Calcular monto de productos
                     if (s.productos_vendidos) {
                         try {
                             const productos = typeof s.productos_vendidos === 'string' 
@@ -3214,19 +3274,16 @@ function mostrarTablaHistorial(adelantos) {
                     
                     const montoServicio = montoTotal - montoProductos;
                     
-                    // Acumular según filtro
                     if (filtro === 'todos' || filtro === 'mi') {
                         montoTransbankServicios += montoServicio;
                         montoTransbankProductos += montoProductos;
                     } else {
-                        // Cuando filtra empleado, solo cuenta 50% del servicio
                         montoTransbankServicios += montoServicio * 0.5;
                         montoTransbankProductos += montoProductos;
                     }
                 }
             });
             
-            // Calcular comisión según opción seleccionada
             if (opcionComision === 'ambos') {
                 comisionTransbank = (montoTransbankServicios + montoTransbankProductos) * 0.027;
             } else if (opcionComision === 'servicios') {
@@ -3234,54 +3291,39 @@ function mostrarTablaHistorial(adelantos) {
             } else if (opcionComision === 'productos') {
                 comisionTransbank = montoTransbankProductos * 0.027;
             }
-            
-            console.log(`💳 Comisión Transbank calculada: $${comisionTransbank.toLocaleString('es-CL')} (opción: ${opcionComision})`);
         }
-                // Cargar adelantos SOLO para vista semanal y rango
-let totalAdelantos = 0;
-if (vista !== 'diaria') {
-    console.log('💸 Cargando adelantos para cierre...');
-    
-    let queryAdelantos = supabase
-        .from('adelantos')
-        .select('barbero_id, monto')
-        .eq('barberia_id', window.CURRENT_BARBERIA_ID)
-        .gte('created_at', fechaInicio + 'T00:00:00')
-        .lte('created_at', fechaFin + 'T23:59:59');
-    
-    // Solo filtrar por activo si es vista SEMANAL
-    if (vista === 'semanal') {
-        queryAdelantos = queryAdelantos.eq('activo', true);
-        console.log('💰 Cierre semanal: solo adelantos activos');
-    } else {
-        console.log('💰 Cierre rango: todos los adelantos históricos');
-    }
-                    
-                    // Aplicar mismo filtro que servicios
-                    if (filtro !== 'todos') {
-                        if (filtro === 'mi') {
-                            queryAdelantos = queryAdelantos.eq('barbero_id', currentUser.id);
-                        } else {
-                            queryAdelantos = queryAdelantos.eq('barbero_id', filtro);
-                        }
-                    }
-                    
-                    const { data: adelantos, error: errorAdelantos } = await queryAdelantos;
-                    
-                    if (errorAdelantos) {
-                        console.error('❌ Error cargando adelantos:', errorAdelantos);
-                    } else if (adelantos) {
-                        totalAdelantos = adelantos.reduce((sum, a) => sum + parseFloat(a.monto || 0), 0);
-                        console.log('💸 Total adelantos:', totalAdelantos);
-                    }
+        
+        let totalAdelantos = 0;
+        if (vista !== 'diaria') {
+            let queryAdelantos = supabase
+                .from('adelantos')
+                .select('barbero_id, monto')
+                .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+                .gte('created_at', fechaInicio + 'T00:00:00')
+                .lte('created_at', fechaFin + 'T23:59:59');
+            
+            if (vista === 'semanal') {
+                queryAdelantos = queryAdelantos.eq('activo', true);
+            }
+            
+            if (filtro !== 'todos') {
+                if (filtro === 'mi') {
+                    queryAdelantos = queryAdelantos.eq('barbero_id', currentUser.id);
+                } else {
+                    queryAdelantos = queryAdelantos.eq('barbero_id', filtro);
                 }
-                
-                // Calcular monto a pagar
-                const montoAPagar = totalRecaudado - totalAdelantos;
-                
-                // Generar HTML del cierre
-              
-                mostrarCierre({
+            }
+            
+            const { data: adelantos, error: errorAdelantos } = await queryAdelantos;
+            
+            if (!errorAdelantos && adelantos) {
+                totalAdelantos = adelantos.reduce((sum, a) => sum + parseFloat(a.monto || 0), 0);
+            }
+        }
+        
+        const montoAPagar = totalRecaudado - totalAdelantos - comisionTransbank;
+        
+        mostrarCierre({
             vista,
             fechaInicio,
             fechaFin,
@@ -3295,12 +3337,12 @@ if (vista !== 'diaria') {
             filtro,
             comisionTransbank
         });
-                
-            } catch (error) {
-                console.error('❌ Error cargando cierre:', error);
-                contenido.innerHTML = '<div class="bg-red-100 p-4 rounded-lg text-red-700">❌ Error al calcular el cierre. Intenta nuevamente.</div>';
-            }
-        }
+        
+    } catch (error) {
+        console.error('❌ Error cargando cierre:', error);
+        contenido.innerHTML = '<div class="bg-red-100 p-4 rounded-lg text-red-700">❌ Error al calcular el cierre.</div>';
+    }
+}
         
        function mostrarCierre(datos) {
     const {
