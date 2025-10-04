@@ -3431,26 +3431,33 @@ function mostrarTablaHistorial(adelantos) {
                             <h4 class="font-bold text-lg mb-4 flex items-center">
                                 💳 Desglose por Forma de Pago
                             </h4>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div class="bg-green-50 p-4 rounded-lg">
                                     <div class="flex justify-between items-center">
                                         <span class="font-medium">💵 Efectivo:</span>
                                         <span class="text-xl font-bold text-green-600">$${(porFormaPago['Efectivo'] || 0).toLocaleString('es-CL')}</span>
                                     </div>
                                 </div>
+                                
                                 <div class="bg-blue-50 p-4 rounded-lg">
-                                    <div class="flex justify-between">
-                            <span>💳 Cuenta RUT:</span>
-                            <span class="text-xl font-bold text-blue-600">$${(porFormaPago['Cuenta RUT'] || 0).toLocaleString('es-CL')}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>💳 Transbank:</span>
-                            <span class="text-xl font-bold text-indigo-600">$${(porFormaPago['Transbank'] || 0).toLocaleString('es-CL')}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>📱 Mercado Pago:</span>
-                            <span class="text-xl font-bold text-purple-600">$${(porFormaPago['Mercado Pago'] || 0).toLocaleString('es-CL')}</span>
-                        </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium">💳 Cuenta RUT:</span>
+                                        <span class="text-xl font-bold text-blue-600">$${(porFormaPago['Cuenta RUT'] || 0).toLocaleString('es-CL')}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-indigo-50 p-4 rounded-lg">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium">💳 Transbank:</span>
+                                        <span class="text-xl font-bold text-indigo-600">$${(porFormaPago['Transbank'] || 0).toLocaleString('es-CL')}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-medium">📱 Mercado Pago:</span>
+                                        <span class="text-xl font-bold text-purple-600">$${(porFormaPago['Mercado Pago'] || 0).toLocaleString('es-CL')}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
