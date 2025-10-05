@@ -1403,6 +1403,7 @@ if (parseFloat(monto) <= 0) {
         if (error) throw error;
         
   // Calcular totales SOLO DE SERVICIOS (sin productos)
+        let totalRecaudadoEmpleado = 0;
         let totalRecaudadoSinComision = 0; // 100% real
         let totalRecaudado = 0; // Con comisión aplicada
         const totalServicios = servicios ? servicios.length : 0;
