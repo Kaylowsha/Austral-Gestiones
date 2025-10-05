@@ -1408,47 +1408,50 @@ if (parseFloat(monto) <= 0) {
         const totalServicios = servicios ? servicios.length : 0;
         
         if (servicios) {
-            servicios.forEach(s => {
-                let montoServicio = parseFloat(s.monto_total || 0);
+    servicios.forEach(s => {
+        let montoServicio = parseFloat(s.monto_total || 0);
+        
+        // Restar productos si los hay
+        if (s.productos_vendidos) {
+            try {
+                const productos = typeof s.productos_vendidos === 'string' 
+                    ? JSON.parse(s.productos_vendidos) 
+                    : s.productos_vendidos;
                 
-                // Restar productos si los hay
-                if (s.productos_vendidos) {
-                    try {
-                        const productos = typeof s.productos_vendidos === 'string' 
-                            ? JSON.parse(s.productos_vendidos) 
-                            : s.productos_vendidos;
-                        
-                        if (Array.isArray(productos)) {
-                            productos.forEach(p => {
-                                montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
-                            });
-                        }
-                    } catch (e) {
-                        console.error('Error parseando productos:', e);
-                    }
+                if (Array.isArray(productos)) {
+                    productos.forEach(p => {
+                        montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                    });
                 }
-                
-                // Acumular monto real (sin comisión)
-                totalRecaudadoSinComision += montoServicio;
-                
-                // Aplicar lógica de comisión según rol y filtro
-                if (userRole === 'empleado') {
-                    // EMPLEADO: Siempre ve 50% de sus servicios
-                    totalRecaudado += montoServicio * 0.5;
-                } else if (userRole === 'admin') {
-                    if (filtro === 'todos') {
-                        // ADMIN "Ver Todos": 100% real (sin comisión)
-                        totalRecaudado += montoServicio;
-                    } else if (filtro === 'mi') {
-                        // ADMIN "Mi Resumen": 100% de sus servicios
-                        totalRecaudado += montoServicio;
-                    } else {
-                        // ADMIN filtrando un empleado: 50% (lo que le debe pagar)
-                        totalRecaudado += montoServicio * 0.5;
-                    }
-                }
-            });
+            } catch (e) {
+                console.error('Error parseando productos:', e);
+            }
         }
+        
+        // Acumular monto real (sin comisión)
+        totalRecaudadoSinComision += montoServicio;
+        
+        // Aplicar lógica de comisión según rol y filtro
+        if (userRole === 'empleado') {
+            // EMPLEADO: 100% de sus servicios y 50% de comisión
+            totalRecaudadoEmpleado += montoServicio;
+            totalRecaudado += montoServicio * 0.5;
+        } else if (userRole === 'admin') {
+            if (filtro === 'todos') {
+                // ADMIN "Ver Todos": 100% real (sin comisión)
+                totalRecaudado += montoServicio;
+            } else if (filtro === 'mi') {
+                // ADMIN "Mi Resumen": 100% de sus servicios y 100% de comisión
+                totalRecaudadoEmpleado += montoServicio;
+                totalRecaudado += montoServicio;
+            } else {
+                // ADMIN filtrando un empleado: 100% de servicios del empleado y 50% de comisión
+                totalRecaudadoEmpleado += montoServicio;
+                totalRecaudado += montoServicio * 0.5;
+            }
+        }
+    });
+}
         
      // Agrupar por forma de pago (solo para ADMIN)
         const porFormaPago = {};
