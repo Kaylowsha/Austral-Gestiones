@@ -834,6 +834,7 @@ function mostrarMensajeBloqueo() {
         
         if (adicionalSelect) {
             adicionalSelect.innerHTML = '<option value="">Ninguno</option>' + options;
+            adicionalSelect.addEventListener('change', actualizarMontoSugerido);
         }
         
     } catch (error) {
@@ -1021,21 +1022,32 @@ function actualizarVistaCarrito() {
 function actualizarMontoSugerido() {
     const montoSugerido = document.getElementById('montoSugerido');
     if (!montoSugerido) return;
-    
+
     let total = 0;
-    
-    // Sumar precio sugerido del servicio principal
+
+    /* Servicio principal (ya lo tenías) */
     const servicioPrincipal = document.getElementById('servicioPrincipal');
-    if (servicioPrincipal.value) {
-        const precioSugerido = parseFloat(servicioPrincipal.options[servicioPrincipal.selectedIndex].dataset.precio);
-        total += precioSugerido;
+    if (servicioPrincipal?.value) {
+        const precio = parseFloat(
+            servicioPrincipal.options[servicioPrincipal.selectedIndex].dataset.precio
+        );
+        total += precio || 0;
     }
-    
-    // Sumar precios de productos en carrito
+
+    /* Servicio adicional (nuevo) */
+    const servicioAdicional = document.getElementById('servicioAdicional');
+    if (servicioAdicional?.value) {
+        const precio = parseFloat(
+            servicioAdicional.options[servicioAdicional.selectedIndex].dataset.precio
+        );
+        total += precio || 0;
+    }
+
+    /* Productos del carrito (ya lo tenías) */
     carritoProductos.forEach(item => {
         total += item.precio * item.cantidad;
     });
-    
+
     montoSugerido.value = `$${total.toLocaleString('es-CL')}`;
 }
 function eliminarProductoDelCarrito(productoId) {
