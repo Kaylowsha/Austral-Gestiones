@@ -2898,6 +2898,11 @@ function mostrarTablaHistorial(adelantos) {
                 <td class="px-4 py-3 text-sm">${fecha}</td>
                 <td class="px-4 py-3 text-sm">${adelanto.barbero_nombre}</td>
                 <td class="px-4 py-3 text-sm font-semibold text-green-600">$${parseFloat(adelanto.monto).toLocaleString('es-CL')}</td>
+               <td class="px-4 py-3 text-sm">
+               <button class="text-blue-600 hover:text-blue-800 font-medium" onclick="mostrarModalEditarAdelanto('${adelanto.id}', '${adelanto.barbero_nombre}', ${adelanto.monto}, '${adelanto.motivo}')">
+        <i class="fas fa-edit"></i> Editar
+    </button>
+</td>
                 <td class="px-4 py-3 text-sm">${adelanto.motivo}</td>
             </tr>
         `;
