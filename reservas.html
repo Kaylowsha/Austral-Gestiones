@@ -826,6 +826,7 @@
                 // Parámetros para el template de EmailJS
                 const templateParams = {
                     to_email: reserva.cliente_email,
+                    email_barberia: barberiaData.email_avisos || 'barberia@default.com',
                     cliente_nombre: reserva.cliente_nombre,
                     barberia_nombre: reserva.barberia_nombre,
                     barbero_nombre: reserva.barbero_nombre,
