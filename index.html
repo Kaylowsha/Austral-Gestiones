@@ -1529,6 +1529,7 @@ totalRecaudadoSinComision += montoServicio;
             totalProductosVendidos: totalProductosVendidos,
             montoProductosVendidos: montoProductosVendidos
         });
+      // Construir la primera parte del HTML
         let html = `
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h3 class="text-xl font-bold mb-4">
@@ -1546,14 +1547,16 @@ totalRecaudadoSinComision += montoServicio;
                         <div class="text-sm text-green-600 mb-1">📊 Servicios Realizados</div>
                         <div class="text-2xl font-bold text-green-900">${totalServicios}</div>
                     </div>
-                </div>
+                </div>`;
                 
-             ${filtro !== 'todos' ? `
+        // Añadir la sección de comisión solo si no es "todos"
+        if (filtro !== 'todos') {
+            html += `
                 <div class="bg-purple-50 p-4 rounded-lg mb-6">
                     <div class="text-sm text-purple-600 mb-1">💸 Mi Comisión a Cobrar (50%)</div>
                     <div class="text-2xl font-bold text-purple-900">$${totalComisionEmpleado.toLocaleString('es-CL')}</div>
-                </div>
-                ` : ''}
+                </div>`;
+        }
                 
                 <div class="bg-yellow-50 p-4 rounded-lg mb-6">
                     <div class="text-sm text-yellow-600 mb-1">🧴 Productos Vendidos</div>
