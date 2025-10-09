@@ -5274,9 +5274,21 @@ function loadAgenda() {
     
     document.getElementById('contentArea').innerHTML = `
         <div class="max-w-5xl mx-auto">
-            <h2 class="text-2xl font-bold mb-6">
-                <i class="fas fa-calendar-alt mr-2"></i>Agenda de Citas
-            </h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-calendar-alt mr-2"></i>Agenda de Citas
+                </h2>
+                <div class="flex space-x-2">
+                    ${userRole === 'admin' ? `
+                    <button onclick="mostrarModalConfiguracionHorarios()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 flex items-center">
+                        <i class="fas fa-cog mr-2"></i>Configurar Horarios
+                    </button>
+                    ` : ''}
+                    <button onclick="abrirReservasOnline()" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 flex items-center">
+                        <i class="fas fa-plus-circle mr-2"></i>Agendar Cliente
+                    </button>
+                </div>
+            </div>
             
             ${userRole === 'admin' ? `
             <!-- Filtro de Barbero (solo admin) -->
@@ -6742,8 +6754,395 @@ function cerrarModalServicio() {
             if (modal) modal.remove();
         }
         // ===============================
-        // LOGOUT
-        // ===============================
+// FUNCIONES DE AGENDA Y RESERVAS
+// ===============================
+function abrirReservasOnline() {
+    // Construir URL con parámetros de la barbería actual
+    const barberiaId = window.CURRENT_BARBERIA_ID;
+    const barberiaUrl = `reservas.html?barberia=${barberiaId}&origen=interno`;
+    
+    // Abrir en nueva pestaña
+    window.open(barberiaUrl, '_blank');
+}
+
+// ===============================
+// CONFIGURACIÓN DE HORARIOS
+// ===============================
+function mostrarModalConfiguracionHorarios() {
+    console.log('🕒 Abriendo modal de configuración de horarios...');
+    
+    // Crear el modal HTML
+    const modalHTML = `
+        <div id="modalHorarios" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-white rounded-lg p-6 max-w-5xl w-full mx-4 my-8">
+                <!-- Cabecera del modal -->
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">
+                        <i class="fas fa-clock mr-2"></i>Configuración de Horarios
+                    </h3>
+                    <button onclick="cerrarModalHorarios()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- Duración de las citas -->
+                <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        ⏱️ Duración estándar de cada cita:
+                    </label>
+                    <select id="duracionCitas" class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="15">15 minutos</option>
+                        <option value="30" selected>30 minutos</option>
+                        <option value="45">45 minutos</option>
+                        <option value="60">1 hora</option>
+                    </select>
+                    <p class="text-xs text-blue-700 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Esta duración se aplica a todos los horarios disponibles en el sistema de reservas.
+                    </p>
+                </div>
+                
+                <!-- Tabs de días -->
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex space-x-6 overflow-x-auto" id="diasTabs">
+                        <!-- Los tabs se generarán dinámicamente -->
+                    </nav>
+                </div>
+                
+                <!-- Contenido del día seleccionado -->
+                <div id="configuracionDia" class="mb-6">
+                    <!-- El contenido se cargará dinámicamente -->
+                </div>
+                
+                <!-- Botón guardar -->
+                <div class="flex justify-end mt-6">
+                    <button onclick="guardarConfiguracionHorarios()" class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700">
+                        <i class="fas fa-save mr-2"></i>Guardar Configuración
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Insertar modal en el DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Cargar configuración actual
+    cargarConfiguracionHorarios();
+}
+
+function cerrarModalHorarios() {
+    const modal = document.getElementById('modalHorarios');
+    if (modal) modal.remove();
+}
+
+let configuracionActual = null;
+
+async function cargarConfiguracionHorarios() {
+    try {
+        showLoading();
+        
+        // Cargar configuración desde la base de datos
+        const { data: barberia, error } = await supabase
+            .from('barberias')
+            .select('configuracion_horarios')
+            .eq('id', window.CURRENT_BARBERIA_ID)
+            .single();
+        
+        if (error) throw error;
+        
+        // Almacenar configuración actual
+        configuracionActual = barberia.configuracion_horarios;
+        
+        if (!configuracionActual) {
+            console.warn('⚠️ No se encontró configuración de horarios, usando valores predeterminados');
+            configuracionActual = {
+                duracion_citas: 30,
+                dias: {
+                    lunes: { activo: true, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } },
+                    martes: { activo: true, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } },
+                    miercoles: { activo: true, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } },
+                    jueves: { activo: true, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } },
+                    viernes: { activo: true, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } },
+                    sabado: { activo: true, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } },
+                    domingo: { activo: false, manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" }, tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" } }
+                }
+            };
+        }
+        
+        // Establecer duración de citas
+        document.getElementById('duracionCitas').value = configuracionActual.duracion_citas || 30;
+        
+        // Generar tabs de días
+        generarTabsDias();
+        
+        // Mostrar configuración del primer día activo
+        const primerDia = Object.keys(configuracionActual.dias)[0] || 'lunes';
+        mostrarConfiguracionDia(primerDia);
+        
+    } catch (error) {
+        console.error('❌ Error cargando configuración de horarios:', error);
+        alert('Error al cargar la configuración de horarios');
+    } finally {
+        hideLoading();
+    }
+}
+
+function generarTabsDias() {
+    const diasSemana = [
+        {id: 'lunes', nombre: 'Lunes'},
+        {id: 'martes', nombre: 'Martes'},
+        {id: 'miercoles', nombre: 'Miércoles'},
+        {id: 'jueves', nombre: 'Jueves'},
+        {id: 'viernes', nombre: 'Viernes'},
+        {id: 'sabado', nombre: 'Sábado'},
+        {id: 'domingo', nombre: 'Domingo'}
+    ];
+    
+    const tabsContainer = document.getElementById('diasTabs');
+    let html = '';
+    
+    diasSemana.forEach((dia, index) => {
+        const configuracionDia = configuracionActual.dias[dia.id] || { activo: dia.id !== 'domingo' };
+        const claseActivo = index === 0 ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+        const iconoEstado = configuracionDia.activo ? '🟢' : '⚫';
+        
+        html += `
+            <button class="tab-dia whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${claseActivo}" 
+                   data-dia="${dia.id}" onclick="mostrarConfiguracionDia('${dia.id}')">
+                ${iconoEstado} ${dia.nombre}
+            </button>
+        `;
+    });
+    
+    tabsContainer.innerHTML = html;
+    
+    // Activar el primer tab
+    const primeraTab = document.querySelector('.tab-dia');
+    if (primeraTab) {
+        primeraTab.click();
+    }
+}
+
+function mostrarConfiguracionDia(diaId) {
+    console.log(`🔄 Mostrando configuración para: ${diaId}`);
+    
+    // Actualizar estado de los tabs
+    document.querySelectorAll('.tab-dia').forEach(tab => {
+        tab.classList.remove('border-blue-500', 'text-blue-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    const tabActiva = document.querySelector(`.tab-dia[data-dia="${diaId}"]`);
+    if (tabActiva) {
+        tabActiva.classList.remove('border-transparent', 'text-gray-500');
+        tabActiva.classList.add('border-blue-500', 'text-blue-600');
+    }
+    
+    // Obtener configuración del día
+    const configuracionDia = configuracionActual.dias[diaId] || {
+        activo: diaId !== 'domingo',
+        manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" },
+        tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" }
+    };
+    
+    // Nombres de días en español
+    const nombresDias = {
+        lunes: "Lunes",
+        martes: "Martes",
+        miercoles: "Miércoles",
+        jueves: "Jueves",
+        viernes: "Viernes",
+        sabado: "Sábado",
+        domingo: "Domingo"
+    };
+    
+    // Generar contenido de configuración
+    const contenedor = document.getElementById('configuracionDia');
+    
+    let html = `
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <!-- Cabecera del día -->
+            <div class="bg-gray-50 p-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-lg font-bold text-gray-800">${nombresDias[diaId]}</h4>
+                    <div class="flex items-center">
+                        <span class="mr-2 text-sm text-gray-600">Día Activo</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="activoDia" class="sr-only peer" ${configuracionDia.activo ? 'checked' : ''}>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Configuración mañana -->
+            <div class="p-4 border-b border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h5 class="font-bold text-gray-700">
+                        <span class="text-yellow-500">☀️</span> Horario de Mañana
+                    </h5>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="activoManana" class="sr-only peer" ${configuracionDia.manana.activo ? 'checked' : ''}>
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        <span class="ml-2 text-sm text-gray-600">Activo</span>
+                    </label>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Inicio</label>
+                            <input type="time" id="desdeManana" value="${configuracionDia.manana.desde}" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Fin</label>
+                            <input type="time" id="hastaManana" value="${configuracionDia.manana.hasta}" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje Promocional (opcional)</label>
+                        <textarea id="mensajeManana" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ej: ¡10% de descuento en horario matutino!">${configuracionDia.manana.mensaje || ''}</textarea>
+                        <p class="text-xs text-gray-500 mt-1">Este mensaje aparecerá en la web de reservas para este horario</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Configuración tarde -->
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h5 class="font-bold text-gray-700">
+                        <span class="text-blue-500">🌙</span> Horario de Tarde
+                    </h5>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="activoTarde" class="sr-only peer" ${configuracionDia.tarde.activo ? 'checked' : ''}>
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        <span class="ml-2 text-sm text-gray-600">Activo</span>
+                    </label>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Inicio</label>
+                            <input type="time" id="desdeTarde" value="${configuracionDia.tarde.desde}" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hora de Fin</label>
+                            <input type="time" id="hastaTarde" value="${configuracionDia.tarde.hasta}" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Mensaje Promocional (opcional)</label>
+                        <textarea id="mensajeTarde" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Ej: Horario especial con tu barbero favorito">${configuracionDia.tarde.mensaje || ''}</textarea>
+                        <p class="text-xs text-gray-500 mt-1">Este mensaje aparecerá en la web de reservas para este horario</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    contenedor.innerHTML = html;
+    
+    // Actualizar los inputs según cambia el día activo/inactivo
+    document.getElementById('activoDia').addEventListener('change', function() {
+        const activo = this.checked;
+        updateTabState(diaId, activo);
+    });
+}
+
+function updateTabState(diaId, activo) {
+    const tab = document.querySelector(`.tab-dia[data-dia="${diaId}"]`);
+    if (tab) {
+        const iconoEstado = activo ? '🟢' : '⚫';
+        const textoTab = tab.textContent.substring(2); // Remover el emoji actual
+        tab.textContent = `${iconoEstado} ${textoTab}`;
+    }
+}
+
+async function guardarConfiguracionHorarios() {
+    try {
+        showLoading();
+        
+        // Recopilar datos del formulario
+        const duracionCitas = parseInt(document.getElementById('duracionCitas').value);
+        
+        // Obtener configuración actual de cada día
+        const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+        const configuracionNueva = {
+            duracion_citas: duracionCitas,
+            dias: {}
+        };
+        
+        // Para el día actualmente mostrado, recoger los datos del formulario
+        const diaActual = document.querySelector('.tab-dia.border-blue-500').dataset.dia;
+        const activoDia = document.getElementById('activoDia').checked;
+        
+        const activoManana = document.getElementById('activoManana').checked;
+        const desdeManana = document.getElementById('desdeManana').value;
+        const hastaManana = document.getElementById('hastaManana').value;
+        const mensajeManana = document.getElementById('mensajeManana').value;
+        
+        const activoTarde = document.getElementById('activoTarde').checked;
+        const desdeTarde = document.getElementById('desdeTarde').value;
+        const hastaTarde = document.getElementById('hastaTarde').value;
+        const mensajeTarde = document.getElementById('mensajeTarde').value;
+        
+        // Actualizar la configuración del día actual
+        configuracionActual.dias[diaActual] = {
+            activo: activoDia,
+            manana: {
+                activo: activoManana,
+                desde: desdeManana,
+                hasta: hastaManana,
+                mensaje: mensajeManana
+            },
+            tarde: {
+                activo: activoTarde,
+                desde: desdeTarde,
+                hasta: hastaTarde,
+                mensaje: mensajeTarde
+            }
+        };
+        
+        // Copiar la configuración actual para todos los días
+        diasSemana.forEach(dia => {
+            configuracionNueva.dias[dia] = configuracionActual.dias[dia] || {
+                activo: dia !== 'domingo',
+                manana: { activo: true, desde: "10:00", hasta: "13:00", mensaje: "" },
+                tarde: { activo: true, desde: "15:00", hasta: "20:00", mensaje: "" }
+            };
+        });
+        
+        // Establecer la duración de citas
+        configuracionNueva.duracion_citas = duracionCitas;
+        
+        console.log('💾 Guardando configuración de horarios:', configuracionNueva);
+        
+        // Guardar en la base de datos
+        const { error } = await supabase
+            .from('barberias')
+            .update({ configuracion_horarios: configuracionNueva })
+            .eq('id', window.CURRENT_BARBERIA_ID);
+        
+        if (error) throw error;
+        
+        alert('✅ Configuración de horarios guardada correctamente');
+        
+        // Actualizar la configuración actual
+        configuracionActual = configuracionNueva;
+        
+    } catch (error) {
+        console.error('❌ Error guardando configuración:', error);
+        alert('Error al guardar la configuración de horarios: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// ===============================
+// LOGOUT
+// ===============================
         function logout() {
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userRole');
