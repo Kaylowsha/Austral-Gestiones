@@ -1339,7 +1339,8 @@ if (parseFloat(monto) <= 0) {
     }, 100);
 }
         
-     async function cargarDatosResumen() {
+    async function cargarDatosResumen() {
+    console.log('🔵 INICIANDO cargarDatosResumen()');
     const contenido = document.getElementById('contenidoResumen');
     if (!contenido) return;
     
@@ -1409,7 +1410,7 @@ if (parseFloat(monto) <= 0) {
         
         if (error) throw error;
         
-        let totalRecaudadoEmpleado = 0;
+       let totalRecaudadoEmpleado = 0;
         let totalComisionEmpleado = 0;
         let totalRecaudadoSinComision = 0;
         let totalRecaudado = 0;
@@ -1418,9 +1419,19 @@ if (parseFloat(monto) <= 0) {
         let totalProductosVendidos = 0;
         let montoProductosVendidos = 0;
         
+        console.log('🔵 Total de servicios a procesar:', totalServicios);
+        console.log('🔵 Filtro actual:', document.getElementById('selectBarberoResumen')?.value || 'mi');
+        
         if (servicios) {
-            servicios.forEach(s => {
+            servicios.forEach((s, index) => {
                 let montoServicio = parseFloat(s.monto_total || 0);
+                
+                console.log(`🔵 Servicio ${index + 1}:`, {
+                    codigo: s.codigo_diario,
+                    monto_total: s.monto_total,
+                    montoServicio: montoServicio,
+                    tiene_productos: !!s.productos_vendidos
+                });
                 
                 if (s.productos_vendidos) {
                     try {
@@ -1450,11 +1461,13 @@ totalRecaudadoSinComision += montoServicio;
                     totalRecaudadoEmpleado += montoServicio;
                     totalComisionEmpleado += montoServicio * 0.5;
                     totalRecaudado += montoServicio * 0.5;
-                } else if (userRole === 'admin') {
+               } else if (userRole === 'admin') {
                     if (filtro === 'todos') {
                         // Admin viendo TODOS: sumar el monto real del servicio (sin comisión)
+                        console.log('🟢 Admin "Ver Todos" - Sumando montoServicio:', montoServicio);
                         totalRecaudado += montoServicio;
                         totalRecaudadoEmpleado += montoServicio; // Para mostrar en la card azul
+                        console.log('🟢 Acumulado hasta ahora - totalRecaudado:', totalRecaudado, 'totalRecaudadoEmpleado:', totalRecaudadoEmpleado);
                     } else if (filtro === 'mi') {
                         totalRecaudadoEmpleado += montoServicio;
                         totalComisionEmpleado += montoServicio;
@@ -1509,7 +1522,13 @@ totalRecaudadoSinComision += montoServicio;
                 console.log('💰 Adelantos filtrados:', adelantos.length, 'Total:', totalAdelantos);
             }
         }
-        
+        console.log('🔵 RESUMEN FINAL:', {
+            totalRecaudadoEmpleado: totalRecaudadoEmpleado,
+            totalRecaudado: totalRecaudado,
+            totalServicios: totalServicios,
+            totalProductosVendidos: totalProductosVendidos,
+            montoProductosVendidos: montoProductosVendidos
+        });
         let html = `
             <div class="bg-white rounded-lg shadow-lg p-6">
                 <h3 class="text-xl font-bold mb-4">
