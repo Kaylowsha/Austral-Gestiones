@@ -1548,12 +1548,11 @@ totalRecaudadoSinComision += montoServicio;
                     </div>
                 </div>
                 
-                ${filtro !== 'todos' ? `
-                <div class="bg-purple-50 p-4 rounded-lg mb-6">
+              ${filtro !== 'todos' ? 
+                `<div class="bg-purple-50 p-4 rounded-lg mb-6">
                     <div class="text-sm text-purple-600 mb-1">💸 Mi Comisión a Cobrar (50%)</div>
                     <div class="text-2xl font-bold text-purple-900">$${totalComisionEmpleado.toLocaleString('es-CL')}</div>
-                </div>
-                ` : ''}
+                </div>` : ''}
         
         if (vista !== 'diaria' && totalAdelantos > 0) {
             html += `
