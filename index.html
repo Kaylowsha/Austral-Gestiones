@@ -1444,7 +1444,7 @@ if (parseFloat(monto) <= 0) {
                     }
                 }
                 
-                totalRecaudadoSinComision += montoServicio;
+totalRecaudadoSinComision += montoServicio;
                 
                 if (userRole === 'empleado') {
                     totalRecaudadoEmpleado += montoServicio;
@@ -1452,7 +1452,9 @@ if (parseFloat(monto) <= 0) {
                     totalRecaudado += montoServicio * 0.5;
                 } else if (userRole === 'admin') {
                     if (filtro === 'todos') {
+                        // Admin viendo TODOS: sumar el monto real del servicio (sin comisión)
                         totalRecaudado += montoServicio;
+                        totalRecaudadoEmpleado += montoServicio; // Para mostrar en la card azul
                     } else if (filtro === 'mi') {
                         totalRecaudadoEmpleado += montoServicio;
                         totalComisionEmpleado += montoServicio;
