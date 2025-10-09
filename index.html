@@ -3707,28 +3707,27 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
             }
         }
         
-        // Acumular monto real (sin comisión)
-        totalRecaudadoSinComision += montoServicio;
-        
-        // Aplicar lógica de comisión según rol y filtro
-        if (userRole === 'empleado') {
-            // EMPLEADO: 100% de sus servicios y 50% de comisión
-            totalRecaudadoEmpleado += montoServicio;
-            totalRecaudado += montoServicio * 0.5;
-        } else if (userRole === 'admin') {
-            if (filtro === 'todos') {
-                // ADMIN "Ver Todos": 100% real (sin comisión)
-                totalRecaudado += montoServicio;
-            } else if (filtro === 'mi') {
-                // ADMIN "Mi Resumen": 100% de sus servicios y 100% de comisión
-                totalRecaudadoEmpleado += montoServicio;
-                totalRecaudado += montoServicio;
-            } else {
-                // ADMIN filtrando un empleado: 100% de servicios del empleado y 50% de comisión
-                totalRecaudadoEmpleado += montoServicio;
-                totalRecaudado += montoServicio * 0.5;
-            }
-        }
+    totalRecaudadoSinComision += montoServicio;
+                
+                if (userRole === 'empleado') {
+                    totalRecaudadoEmpleado += montoServicio;
+                    totalComisionEmpleado += montoServicio * 0.5;
+                    totalRecaudado += montoServicio * 0.5;
+                } else if (userRole === 'admin') {
+                    if (filtro === 'todos') {
+                        // Admin viendo TODOS: sumar el monto real del servicio (sin comisión)
+                        totalRecaudado += montoServicio;
+                        totalRecaudadoEmpleado += montoServicio; // Para mostrar en la card azul
+                    } else if (filtro === 'mi') {
+                        totalRecaudadoEmpleado += montoServicio;
+                        totalComisionEmpleado += montoServicio;
+                        totalRecaudado += montoServicio;
+                    } else {
+                        totalRecaudadoEmpleado += montoServicio;
+                        totalComisionEmpleado += montoServicio * 0.5;
+                        totalRecaudado += montoServicio * 0.5;
+                    }
+                }
     });
 }
         
