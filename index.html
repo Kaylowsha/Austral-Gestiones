@@ -3684,13 +3684,14 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
         let totalRecaudado = 0;
         const totalServicios = servicios ? servicios.length : 0;
         
-       if (servicios) {
-    let totalRecaudadoEmpleado = 0; // Declarar la variable aquí
+if (servicios) {
+    let totalRecaudadoEmpleado = 0;
     
     servicios.forEach(s => {
-        let montoServicio = parseFloat(s.monto_total || 0);
+        let montoTotal = parseFloat(s.monto_total || 0);
+        let montoServicio = montoTotal; // Empezar con el monto total
         
-        // Restar productos si los hay
+        // Separar productos del monto de servicio
         if (s.productos_vendidos) {
             try {
                 const productos = typeof s.productos_vendidos === 'string' 
@@ -3699,7 +3700,13 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
                 
                 if (Array.isArray(productos)) {
                     productos.forEach(p => {
-                        montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                        const cantidad = p.cantidad || 1;
+                        const precio = parseFloat(p.precio || 0);
+                        const montoProducto = precio * cantidad;
+                        
+                        montoServicio -= montoProducto;
+                        montoProductosVendidos += montoProducto;
+                        totalProductosVendidos += cantidad;
                     });
                 }
             } catch (e) {
@@ -3707,27 +3714,30 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
             }
         }
         
-    totalRecaudadoSinComision += montoServicio;
-                
-                if (userRole === 'empleado') {
-                    totalRecaudadoEmpleado += montoServicio;
-                    totalComisionEmpleado += montoServicio * 0.5;
-                    totalRecaudado += montoServicio * 0.5;
-                } else if (userRole === 'admin') {
-                    if (filtro === 'todos') {
-                        // Admin viendo TODOS: sumar el monto real del servicio (sin comisión)
-                        totalRecaudado += montoServicio;
-                        totalRecaudadoEmpleado += montoServicio; // Para mostrar en la card azul
-                    } else if (filtro === 'mi') {
-                        totalRecaudadoEmpleado += montoServicio;
-                        totalComisionEmpleado += montoServicio;
-                        totalRecaudado += montoServicio;
-                    } else {
-                        totalRecaudadoEmpleado += montoServicio;
-                        totalComisionEmpleado += montoServicio * 0.5;
-                        totalRecaudado += montoServicio * 0.5;
-                    }
-                }
+        // Debug: mostrar qué se está sumando
+        console.log('Servicio:', s.codigo_diario, 'MontoTotal:', montoTotal, 'MontoServicio:', montoServicio, 'Filtro:', filtro);
+        
+        totalRecaudadoSinComision += montoServicio;
+        
+        if (userRole === 'empleado') {
+            totalRecaudadoEmpleado += montoServicio;
+            totalComisionEmpleado += montoServicio * 0.5;
+            totalRecaudado += montoServicio * 0.5;
+        } else if (userRole === 'admin') {
+            if (filtro === 'todos') {
+                // Admin viendo TODOS: sumar monto TOTAL (servicios + productos)
+                totalRecaudadoEmpleado += montoTotal; // ← CAMBIO CLAVE: usar montoTotal
+                totalRecaudado += montoTotal; // ← CAMBIO CLAVE: usar montoTotal
+            } else if (filtro === 'mi') {
+                totalRecaudadoEmpleado += montoServicio;
+                totalComisionEmpleado += montoServicio;
+                totalRecaudado += montoServicio;
+            } else {
+                totalRecaudadoEmpleado += montoServicio;
+                totalComisionEmpleado += montoServicio * 0.5;
+                totalRecaudado += montoServicio * 0.5;
+            }
+        }
     });
 }
         
