@@ -1550,10 +1550,15 @@ totalRecaudadoSinComision += montoServicio;
                 </div>`;
                 
         // Añadir la sección de comisión solo si no es "todos"
-        if (filtro !== 'todos') {
+      if (filtro !== 'todos') {
+            // Determinar el texto correcto basado en el rol y filtro
+            const textoComision = (userRole === 'admin' && (filtro === 'mi')) 
+                ? '💸 Mi Comisión a Cobrar (100%)' 
+                : '💸 Mi Comisión a Cobrar (50%)';
+                
             html += `
                 <div class="bg-purple-50 p-4 rounded-lg mb-6">
-                    <div class="text-sm text-purple-600 mb-1">💸 Mi Comisión a Cobrar (50%)</div>
+                    <div class="text-sm text-purple-600 mb-1">${textoComision}</div>
                     <div class="text-2xl font-bold text-purple-900">$${totalComisionEmpleado.toLocaleString('es-CL')}</div>
                 </div>`;
         }
