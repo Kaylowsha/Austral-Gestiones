@@ -1414,6 +1414,9 @@ if (parseFloat(monto) <= 0) {
         let totalRecaudadoSinComision = 0;
         let totalRecaudado = 0;
         const totalServicios = servicios ? servicios.length : 0;
+        // Variables para productos vendidos
+        let totalProductosVendidos = 0;
+        let montoProductosVendidos = 0;
         
         if (servicios) {
             servicios.forEach(s => {
@@ -1426,8 +1429,14 @@ if (parseFloat(monto) <= 0) {
                             : s.productos_vendidos;
                         
                         if (Array.isArray(productos)) {
-                            productos.forEach(p => {
-                                montoServicio -= parseFloat(p.precio || 0) * (p.cantidad || 1);
+                           productos.forEach(p => {
+                                const cantidad = p.cantidad || 1;
+                                const precio = parseFloat(p.precio || 0);
+                                const montoProducto = precio * cantidad;
+                                
+                                montoServicio -= montoProducto;
+                                montoProductosVendidos += montoProducto;
+                                totalProductosVendidos += cantidad;
                             });
                         }
                     } catch (e) {
@@ -1521,6 +1530,14 @@ if (parseFloat(monto) <= 0) {
                 <div class="bg-purple-50 p-4 rounded-lg mb-6">
                     <div class="text-sm text-purple-600 mb-1">💸 Mi Comisión a Cobrar (50%)</div>
                     <div class="text-2xl font-bold text-purple-900">$${totalComisionEmpleado.toLocaleString('es-CL')}</div>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg mb-6">
+                    <div class="text-sm text-yellow-600 mb-1">🧴 Productos Vendidos</div>
+                    <div class="text-lg font-bold text-yellow-900">Cantidad: ${totalProductosVendidos} | Monto: $${montoProductosVendidos.toLocaleString('es-CL')}</div>
+                    ${totalProductosVendidos === 0 ? 
+                        '<div class="text-xs text-yellow-600 mt-1">No hay productos vendidos</div>' : 
+                        '<div class="text-xs text-yellow-600 mt-1">💡 Los productos NO generan comisión para empleados</div>'
+                    }
                 </div>
         `;
         
