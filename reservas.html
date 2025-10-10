@@ -448,70 +448,156 @@ async function cargarDatosBarberia() {
 // Función para cargar la configuración de horarios
 function cargarConfiguracionHorarios(barberia) {
     try {
+        // Configuración por defecto
+        const configDefault = {
+            diasActivos: {
+                lunes: true,
+                martes: true,
+                miercoles: true,
+                jueves: true,
+                viernes: true,
+                sabado: true,
+                domingo: false
+            },
+            horarios: {
+                lunes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                         tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                martes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                          tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                miercoles: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                             tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                jueves: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                          tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                viernes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                           tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                sabado: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                          tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'] },
+                domingo: { manana: [], tarde: [] }
+            },
+            mensajes: {
+                lunes: '',
+                martes: '',
+                miercoles: '',
+                jueves: '',
+                viernes: '',
+                sabado: '',
+                domingo: ''
+            },
+            mensajeGlobal: '',
+            duracionCita: 30
+        };
+        
         // Si existe configuración personalizada en la BD
         if (barberia.configuracion_horarios) {
-            configuracionHorarios = barberia.configuracion_horarios;
-            debug('✅ Configuración de horarios cargada', configuracionHorarios);
+            // Log de la configuración original
+            debug('🔍 Configuración original:', barberia.configuracion_horarios);
             
-            // Log detallado para diagnosticar estructura
-            debug('📊 Estructura de configuración:', {
-                tieneHorarios: !!configuracionHorarios.horarios,
-                tieneDiasActivos: !!configuracionHorarios.diasActivos,
-                tieneMensajes: !!configuracionHorarios.mensajes,
-                horarioLunes: configuracionHorarios.horarios?.lunes,
-                diasActivos: configuracionHorarios.diasActivos
+            let config = barberia.configuracion_horarios;
+            
+            // Si la configuración es un string (JSON), intentar parsearlo
+            if (typeof config === 'string') {
+                try {
+                    config = JSON.parse(config);
+                    debug('✅ Configuración parseada de string JSON');
+                } catch (e) {
+                    debug('❌ Error parseando JSON de configuración', e);
+                    config = {}; // Resetear a objeto vacío si hay error
+                }
+            }
+            
+            // Validar estructura completa y normalizar
+            let configNormalizada = {
+                diasActivos: config.diasActivos || configDefault.diasActivos,
+                horarios: config.horarios || configDefault.horarios,
+                mensajes: config.mensajes || configDefault.mensajes,
+                mensajeGlobal: config.mensajeGlobal || '',
+                duracionCita: parseInt(config.duracionCita) || 30
+            };
+            
+            // Asegurarse que cada día tiene estructura correcta
+            const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+            dias.forEach(dia => {
+                // Si no existe el día en horarios, usar default
+                if (!configNormalizada.horarios[dia]) {
+                    configNormalizada.horarios[dia] = configDefault.horarios[dia];
+                }
+                
+                // Asegurar que manana y tarde sean arrays
+                if (!Array.isArray(configNormalizada.horarios[dia].manana)) {
+                    configNormalizada.horarios[dia].manana = configDefault.horarios[dia].manana;
+                }
+                
+                if (!Array.isArray(configNormalizada.horarios[dia].tarde)) {
+                    configNormalizada.horarios[dia].tarde = configDefault.horarios[dia].tarde;
+                }
+                
+                // Si no existe el día en mensajes, usar default
+                if (typeof configNormalizada.mensajes[dia] === 'undefined') {
+                    configNormalizada.mensajes[dia] = '';
+                }
+                
+                // Si no existe el día en diasActivos, usar default
+                if (typeof configNormalizada.diasActivos[dia] === 'undefined') {
+                    configNormalizada.diasActivos[dia] = configDefault.diasActivos[dia];
+                }
             });
             
-            // Establecer duración de cita si está configurada
-            if (configuracionHorarios.duracionCita) {
-                duracionCita = parseInt(configuracionHorarios.duracionCita) || 30;
-                debug('⏱️ Duración de cita configurada:', duracionCita + ' minutos');
-            }
+            configuracionHorarios = configNormalizada;
+            debug('✅ Configuración normalizada', configuracionHorarios);
+            
+            // Establecer duración de cita
+            duracionCita = configuracionHorarios.duracionCita;
+            debug('⏱️ Duración de cita:', duracionCita + ' minutos');
+            
         } else {
-            // Configuración por defecto
+            // Usar configuración por defecto
             debug('⚠️ No hay configuración personalizada, usando valores por defecto');
-            configuracionHorarios = {
-                diasActivos: {
-                    lunes: true,
-                    martes: true,
-                    miercoles: true,
-                    jueves: true,
-                    viernes: true,
-                    sabado: true,
-                    domingo: false
-                },
-                horarios: {
-                    lunes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                             tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    martes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    miercoles: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                                 tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    jueves: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    viernes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                               tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    sabado: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'] },
-                    domingo: { manana: [], tarde: [] }
-                },
-                mensajes: {
-                    lunes: '',
-                    martes: '',
-                    miercoles: '',
-                    jueves: '',
-                    viernes: '',
-                    sabado: '',
-                    domingo: ''
-                },
-                mensajeGlobal: '',
-                duracionCita: 30
-            };
+            configuracionHorarios = configDefault;
         }
+        
+        // Log final para debug
+        debug('📊 Configuración final:', {
+            tieneHorarios: !!configuracionHorarios.horarios,
+            tieneDiasActivos: !!configuracionHorarios.diasActivos,
+            tieneMensajes: !!configuracionHorarios.mensajes,
+            horarioLunes: JSON.stringify(configuracionHorarios.horarios?.lunes || {}),
+            diasActivos: JSON.stringify(configuracionHorarios.diasActivos || {})
+        });
+        
     } catch (error) {
         debug('❌ Error procesando configuración de horarios', error);
         // En caso de error, usar configuración por defecto
-        configuracionHorarios = null;
+        configuracionHorarios = {
+            diasActivos: {
+                lunes: true,
+                martes: true,
+                miercoles: true,
+                jueves: true,
+                viernes: true,
+                sabado: true,
+                domingo: false
+            },
+            horarios: {
+                lunes: { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE },
+                martes: { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE },
+                miercoles: { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE },
+                jueves: { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE },
+                viernes: { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE },
+                sabado: { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE },
+                domingo: { manana: [], tarde: [] }
+            },
+            mensajes: {
+                lunes: '',
+                martes: '',
+                miercoles: '',
+                jueves: '',
+                viernes: '',
+                sabado: '',
+                domingo: ''
+            },
+            mensajeGlobal: '',
+            duracionCita: 30
+        };
     }
 }
 
