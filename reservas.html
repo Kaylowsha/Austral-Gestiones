@@ -1320,21 +1320,20 @@ async function enviarEmailNotificacionAdmin(reserva, emailClienteEnviado) {
             horarioCompleto += ` (${duracionMostrar} min)`;
         }
 
-        // Parámetros para el template de EmailJS
-        const templateParams = {
-            to_email: barberiaData.email_avisos,
-            origen: origenInterno ? 'Sistema interno' : 'Web pública',
-            cliente_nombre: reserva.cliente_nombre,
-            cliente_telefono: reserva.cliente_telefono,
-            cliente_email: reserva.cliente_email || 'No proporcionado',
-            fecha_formateada: fechaFormateada,
-            hora: horarioCompleto,
-            barbero_nombre: reserva.barbero_nombre,
-            notas: reserva.notas || 'Sin notas',
-            email_enviado: emailClienteEnviado ? 'Sí' : 'No',
-            barberia_nombre: reserva.barberia_nombre,
-            email_barberia: barberiaData.email_avisos // Asegurar que está incluido este campo
-        };
+// Parámetros para el template de EmailJS - corregidos para coincidir con la plantilla
+const templateParams = {
+    email: barberiaData.email_avisos, // CRUCIAL: Debe ser "email" no "to_email"
+    origen: origenInterno ? 'Sistema interno' : 'Web pública',
+    cliente_nombre: reserva.cliente_nombre,
+    cliente_telefono: reserva.cliente_telefono,
+    cliente_email: reserva.cliente_email || 'No proporcionado',
+    fecha_formateada: fechaFormateada,
+    hora: horarioCompleto,
+    barbero_nombre: reserva.barbero_nombre,
+    notas: reserva.notas || 'Sin notas',
+    email_enviado: emailClienteEnviado ? 'Sí' : 'No',
+    barberia_nombre: reserva.barberia_nombre
+};
 
         debug('📤 Enviando notificación al admin con datos:', templateParams);
         
