@@ -274,26 +274,74 @@
     </div>
 
     <script>
-        // Variables globales
-        let barberiaData = null;
-        let barberosDisponibles = [];
-        let fechaSeleccionada = null;
-        let horarioSeleccionado = null;
-        let barberoSeleccionado = null;
-        let fechaActual = new Date();
-        let mesVisualizando = new Date();
+      // Variables globales
+let barberiaData = null;
+let barberosDisponibles = [];
+let fechaSeleccionada = null;
+let horarioSeleccionado = null;
+let barberoSeleccionado = null;
+let fechaActual = new Date();
+let mesVisualizando = new Date();
+let configuracionHorarios = null;
+let duracionCita = 30; // Duración por defecto en minutos
+let origenInterno = false;
         
         // Configuración CORREGIDA
         const SUPABASE_URL = 'https://uzmdreqbcacwkkfwpkui.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_z5aNne74P9pZeMeUkFEyrg_857LNNBh';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Obtener ID de barbería de URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const barberiaId = urlParams.get('barberia') || '450e5ba0-6771-41fd-9003-2706aac125af'; // Rulos por defecto
+       // Obtener parámetros de URL
+const urlParams = new URLSearchParams(window.location.search);
+const barberiaId = urlParams.get('barberia') || '450e5ba0-6771-41fd-9003-2706aac125af'; // Rulos por defecto
+const preseleccionarFecha = urlParams.get('fecha'); // Opcional: fecha preseleccionada YYYY-MM-DD
+const preseleccionarBarbero = urlParams.get('barbero'); // Opcional: ID del barbero preseleccionado
 
-        const HORARIOS_MAÑANA = ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'];
-        const HORARIOS_TARDE = ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'];
+        // Se mantendrán como fallback
+const HORARIOS_MAÑANA = ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'];
+const HORARIOS_TARDE = ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'];
+
+// Función para obtener horarios según configuración
+function obtenerHorariosPorDia(fecha) {
+    if (!configuracionHorarios) return { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE };
+    
+    const diaSemana = fecha.getDay(); // 0=domingo, 1=lunes, ...
+    const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const nombreDia = nombresDias[diaSemana];
+    
+    debug('🗓️ Obteniendo horarios para', nombreDia);
+    
+    // Si el día no está activo, devolver arrays vacíos
+    if (configuracionHorarios.diasActivos && configuracionHorarios.diasActivos[nombreDia] === false) {
+        debug('❌ Día inactivo según configuración');
+        return { manana: [], tarde: [] };
+    }
+    
+    // Si hay horarios configurados para este día
+    if (configuracionHorarios.horarios && configuracionHorarios.horarios[nombreDia]) {
+        const horariosDia = configuracionHorarios.horarios[nombreDia];
+        debug('✅ Horarios configurados encontrados', horariosDia);
+        return {
+            manana: horariosDia.manana || [],
+            tarde: horariosDia.tarde || []
+        };
+    }
+    
+    // Fallback a horarios por defecto
+    debug('⚠️ Sin horarios configurados, usando valores por defecto');
+    return { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE };
+}
+
+// Función para verificar si un día está activo
+function esDiaActivo(fecha) {
+    if (!configuracionHorarios || !configuracionHorarios.diasActivos) return true;
+    
+    const diaSemana = fecha.getDay(); // 0=domingo, 1=lunes, ...
+    const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const nombreDia = nombresDias[diaSemana];
+    
+    return configuracionHorarios.diasActivos[nombreDia] !== false;
+}
 
         // Debug function
         function debug(mensaje, data = null) {
@@ -313,75 +361,149 @@
             panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
         }
 
-        // Inicializar (MEJORADO)
-        window.addEventListener('load', async () => {
-            debug('🚀 Iniciando aplicación');
-            debug('URL actual', window.location.href);
-            debug('Barbería ID detectada', barberiaId);
-            
-            
-            
-            await cargarDatosBarberia();
-            await cargarBarberos();
-            generarCalendario();
-            
-            // Double-click en header para mostrar debug completo
-            document.querySelector('.gradient-bg').addEventListener('dblclick', toggleDebug);
-        });
+     // Inicializar (MEJORADO)
+window.addEventListener('load', async () => {
+    debug('🚀 Iniciando aplicación');
+    debug('URL actual', window.location.href);
+    debug('Barbería ID detectada', barberiaId);
+    
+    // Verificar si viene desde el sistema interno
+    origenInterno = urlParams.get('origen') === 'interno';
+    debug('Origen interno:', origenInterno);
+    
+    await cargarDatosBarberia();
+    await cargarBarberos();
+    generarCalendario();
+    
+    // Double-click en header para mostrar debug completo
+    document.querySelector('.gradient-bg').addEventListener('dblclick', toggleDebug);
+});
 
-        // FUNCIÓN CORREGIDA: Cargar datos barbería
-        async function cargarDatosBarberia() {
-            debug('📊 Cargando datos de barbería...');
-            
-            try {
-                // QUERY SIMPLIFICADA - Sin filtro activa
-                const { data, error } = await supabase
-                    .from('barberias')
-                    .select('*')  // Seleccionar todo para debug
-                    .eq('id', barberiaId);
-                    // ❌ REMOVIDO: .eq('activa', true)
-                    // ❌ REMOVIDO: .single()
+       // FUNCIÓN CORREGIDA: Cargar datos barbería
+async function cargarDatosBarberia() {
+    debug('📊 Cargando datos de barbería...');
+    
+    try {
+        // QUERY SIMPLIFICADA - Sin filtro activa
+        const { data, error } = await supabase
+            .from('barberias')
+            .select('*')  // Seleccionar todo para debug
+            .eq('id', barberiaId);
+            // ❌ REMOVIDO: .eq('activa', true)
+            // ❌ REMOVIDO: .single()
 
-                debug('Respuesta Supabase', { data, error });
+        debug('Respuesta Supabase', { data, error });
 
-                if (error) {
-                    debug('❌ Error Supabase', error);
-                    throw error;
-                }
-
-                if (data && data.length > 0) {
-                    const barberia = data[0];  // Tomar primer resultado
-                    debug('✅ Barbería encontrada', barberia);
-                    
-                    document.getElementById('nombreBarberia').textContent = barberia.nombre;
-                    barberiaData = barberia;
-                    
-                    // Verificar si está activa (sin bloquear)
-                    if (!barberia.activa) {
-                        debug('⚠️ Barbería inactiva pero permitiendo continuar');
-                        const warningDiv = document.createElement('div');
-                        warningDiv.className = 'bg-yellow-100 text-yellow-800 p-2 rounded-lg text-sm mt-2';
-                        warningDiv.textContent = '⚠️ Barbería en mantenimiento - Reservas limitadas';
-                        document.querySelector('.gradient-bg .relative').appendChild(warningDiv);
-                    }
-                } else {
-                    debug('❌ No se encontró barbería con ID', barberiaId);
-                    document.getElementById('nombreBarberia').textContent = 'Barbería no encontrada';
-                    
-                    // Mostrar IDs disponibles para debug
-                    const { data: todasBarberias } = await supabase
-                        .from('barberias')
-                        .select('id, nombre');
-                    
-                    debug('Barberías disponibles', todasBarberias);
-                }
-                
-            } catch (error) {
-                debug('❌ Error crítico cargando barbería', error);
-                console.error('Error cargando barbería:', error);
-                document.getElementById('nombreBarberia').textContent = 'Error de conexión';
-            }
+        if (error) {
+            debug('❌ Error Supabase', error);
+            throw error;
         }
+
+        if (data && data.length > 0) {
+            const barberia = data[0];  // Tomar primer resultado
+            debug('✅ Barbería encontrada', barberia);
+            
+            document.getElementById('nombreBarberia').textContent = barberia.nombre;
+            barberiaData = barberia;
+            
+            // Cargar configuración de horarios
+            cargarConfiguracionHorarios(barberia);
+            
+            // Verificar si está activa (sin bloquear)
+            if (!barberia.activa) {
+                debug('⚠️ Barbería inactiva pero permitiendo continuar');
+                const warningDiv = document.createElement('div');
+                warningDiv.className = 'bg-yellow-100 text-yellow-800 p-2 rounded-lg text-sm mt-2';
+                warningDiv.textContent = '⚠️ Barbería en mantenimiento - Reservas limitadas';
+                document.querySelector('.gradient-bg .relative').appendChild(warningDiv);
+            }
+            
+            // Mostrar mensaje promocional global si existe
+            if (configuracionHorarios && configuracionHorarios.mensajeGlobal) {
+                const mensajeDiv = document.createElement('div');
+                mensajeDiv.className = 'bg-blue-100 text-blue-800 p-2 rounded-lg text-sm mt-2';
+                mensajeDiv.innerHTML = `<i class="fas fa-bullhorn mr-2"></i>${configuracionHorarios.mensajeGlobal}`;
+                document.querySelector('.gradient-bg .relative').appendChild(mensajeDiv);
+            }
+        } else {
+            debug('❌ No se encontró barbería con ID', barberiaId);
+            document.getElementById('nombreBarberia').textContent = 'Barbería no encontrada';
+            
+            // Mostrar IDs disponibles para debug
+            const { data: todasBarberias } = await supabase
+                .from('barberias')
+                .select('id, nombre');
+            
+            debug('Barberías disponibles', todasBarberias);
+        }
+        
+    } catch (error) {
+        debug('❌ Error crítico cargando barbería', error);
+        console.error('Error cargando barbería:', error);
+        document.getElementById('nombreBarberia').textContent = 'Error de conexión';
+    }
+}
+
+// Función para cargar la configuración de horarios
+function cargarConfiguracionHorarios(barberia) {
+    try {
+        // Si existe configuración personalizada en la BD
+        if (barberia.configuracion_horarios) {
+            configuracionHorarios = barberia.configuracion_horarios;
+            debug('✅ Configuración de horarios cargada', configuracionHorarios);
+            
+            // Establecer duración de cita si está configurada
+            if (configuracionHorarios.duracionCita) {
+                duracionCita = parseInt(configuracionHorarios.duracionCita) || 30;
+                debug('⏱️ Duración de cita configurada:', duracionCita + ' minutos');
+            }
+        } else {
+            // Configuración por defecto
+            debug('⚠️ No hay configuración personalizada, usando valores por defecto');
+            configuracionHorarios = {
+                diasActivos: {
+                    lunes: true,
+                    martes: true,
+                    miercoles: true,
+                    jueves: true,
+                    viernes: true,
+                    sabado: true,
+                    domingo: false
+                },
+                horarios: {
+                    lunes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                             tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                    martes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                    miercoles: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                                 tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                    jueves: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                    viernes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                               tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
+                    sabado: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
+                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'] },
+                    domingo: { manana: [], tarde: [] }
+                },
+                mensajes: {
+                    lunes: '',
+                    martes: '',
+                    miercoles: '',
+                    jueves: '',
+                    viernes: '',
+                    sabado: '',
+                    domingo: ''
+                },
+                mensajeGlobal: '',
+                duracionCita: 30
+            };
+        }
+    } catch (error) {
+        debug('❌ Error procesando configuración de horarios', error);
+        // En caso de error, usar configuración por defecto
+        configuracionHorarios = null;
+    }
+}
 
         // FUNCIÓN CORREGIDA: Cargar barberos  
         async function cargarBarberos() {
@@ -473,58 +595,82 @@
             mostrarPaso3();
         }
 
-        function generarCalendario() {
-            const año = mesVisualizando.getFullYear();
-            const mes = mesVisualizando.getMonth();
+       function generarCalendario() {
+    const año = mesVisualizando.getFullYear();
+    const mes = mesVisualizando.getMonth();
+    
+    // Actualizar header
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    document.getElementById('mesActual').textContent = `${meses[mes]} ${año}`;
+    
+    // Obtener primer día del mes y días en el mes
+    const primerDia = new Date(año, mes, 1);
+    const ultimoDia = new Date(año, mes + 1, 0);
+    const diasEnMes = ultimoDia.getDate();
+    
+    // Ajustar inicio del calendario (Lunes = 0)
+    const inicioSemana = primerDia.getDay();
+    const diasInicioCalendario = inicioSemana === 0 ? 6 : inicioSemana - 1;
+    
+    const container = document.getElementById('calendarioDias');
+    container.innerHTML = '';
+    
+    // Días del mes anterior
+    const mesAnterior = new Date(año, mes, 0);
+    for (let i = diasInicioCalendario; i > 0; i--) {
+        const dia = mesAnterior.getDate() - i + 1;
+        const btn = crearDiaCalendario(dia, true, false, false);
+        container.appendChild(btn);
+    }
+    
+    // Días del mes actual
+    const hoy = new Date();
+    for (let dia = 1; dia <= diasEnMes; dia++) {
+        const fechaDia = new Date(año, mes, dia);
+        const esPasado = fechaDia < hoy;
+        const esHoy = fechaDia.toDateString() === hoy.toDateString();
+        
+        // Verificar si el día está activo según configuración
+        const esInactivo = !esDiaActivo(fechaDia);
+        
+        // Un día está inhabilitado si es pasado o está inactivo en la configuración
+        const estaInhabilitado = esPasado || esInactivo;
+        
+        const btn = crearDiaCalendario(dia, false, estaInhabilitado, esHoy);
+        
+        // Si no está inhabilitado, permitir la selección
+        if (!estaInhabilitado) {
+            btn.onclick = () => seleccionarFecha(año, mes, dia);
             
-            // Actualizar header
-            const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            document.getElementById('mesActual').textContent = `${meses[mes]} ${año}`;
-            
-            // Obtener primer día del mes y días en el mes
-            const primerDia = new Date(año, mes, 1);
-            const ultimoDia = new Date(año, mes + 1, 0);
-            const diasEnMes = ultimoDia.getDate();
-            
-            // Ajustar inicio del calendario (Lunes = 0)
-            const inicioSemana = primerDia.getDay();
-            const diasInicioCalendario = inicioSemana === 0 ? 6 : inicioSemana - 1;
-            
-            const container = document.getElementById('calendarioDias');
-            container.innerHTML = '';
-            
-            // Días del mes anterior
-            const mesAnterior = new Date(año, mes, 0);
-            for (let i = diasInicioCalendario; i > 0; i--) {
-                const dia = mesAnterior.getDate() - i + 1;
-                const btn = crearDiaCalendario(dia, true, false, false);
-                container.appendChild(btn);
-            }
-            
-            // Días del mes actual
-            const hoy = new Date();
-            for (let dia = 1; dia <= diasEnMes; dia++) {
-                const fechaDia = new Date(año, mes, dia);
-                const esPasado = fechaDia < hoy;
-                const esDomingo = fechaDia.getDay() === 0;
-                const esHoy = fechaDia.toDateString() === hoy.toDateString();
+            // Si hay un mensaje para este día, agregar tooltip
+            if (configuracionHorarios && configuracionHorarios.mensajes) {
+                const diaSemana = fechaDia.getDay();
+                const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                const nombreDia = nombresDias[diaSemana];
                 
-                const btn = crearDiaCalendario(dia, false, esPasado || esDomingo, esHoy);
-                if (!esPasado && !esDomingo) {
-                    btn.onclick = () => seleccionarFecha(año, mes, dia);
+                if (configuracionHorarios.mensajes[nombreDia]) {
+                    btn.title = configuracionHorarios.mensajes[nombreDia];
+                    btn.classList.add('tiene-mensaje');
+                    // Añadir indicador visual sutil
+                    const indicador = document.createElement('div');
+                    indicador.className = 'w-1 h-1 bg-green-500 rounded-full absolute bottom-1 right-1';
+                    btn.appendChild(indicador);
                 }
-                container.appendChild(btn);
-            }
-            
-            // Días del mes siguiente para completar la grilla
-            const diasEnCalendario = container.children.length;
-            const diasFaltantes = 42 - diasEnCalendario; // 6 semanas × 7 días
-            for (let dia = 1; dia <= Math.min(diasFaltantes, 14); dia++) {
-                const btn = crearDiaCalendario(dia, true, false, false);
-                container.appendChild(btn);
             }
         }
+        
+        container.appendChild(btn);
+    }
+    
+    // Días del mes siguiente para completar la grilla
+    const diasEnCalendario = container.children.length;
+    const diasFaltantes = 42 - diasEnCalendario; // 6 semanas × 7 días
+    for (let dia = 1; dia <= Math.min(diasFaltantes, 14); dia++) {
+        const btn = crearDiaCalendario(dia, true, false, false);
+        container.appendChild(btn);
+    }
+}
 
         function crearDiaCalendario(dia, esOtroMes, esInhabilitado, esHoy) {
             const btn = document.createElement('div');
@@ -585,7 +731,7 @@
             }, 300);
         }
 
-       function cargarHorarios() {
+      function cargarHorarios() {
     const fecha = document.getElementById('fechaSeleccionada').value;
     if (!fecha) return;
 
@@ -593,20 +739,34 @@
     
     fechaSeleccionada = fecha;
     const fechaObj = new Date(fecha + 'T00:00:00');
-    const diaSemana = fechaObj.getDay();
-
-    if (diaSemana === 0) {
-        alert('❌ Los domingos estamos cerrados. Por favor selecciona otro día.');
+    
+    // Verificar si el día está activo según configuración
+    if (!esDiaActivo(fechaObj)) {
+        alert('❌ Este día no está disponible para reservas. Por favor selecciona otro día.');
         document.getElementById('fechaSeleccionada').value = '';
         return;
     }
 
-    // 🔄 NUEVA LÓGICA: Filtrar horarios según fecha seleccionada
+    // Obtener horarios según configuración
+    const horariosConfiguracion = obtenerHorariosPorDia(fechaObj);
+    
+    // Usar horarios de la configuración o los valores por defecto
+    let horariosMañanaDisponibles = horariosConfiguracion.manana.length > 0 
+                                  ? horariosConfiguracion.manana 
+                                  : HORARIOS_MAÑANA;
+    
+    let horariosTardeDisponibles = horariosConfiguracion.tarde.length > 0 
+                                 ? horariosConfiguracion.tarde 
+                                 : HORARIOS_TARDE;
+    
+    debug('📅 Horarios cargados de configuración:', {
+        mañana: horariosMañanaDisponibles,
+        tarde: horariosTardeDisponibles
+    });
+    
+    // Verificar si es hoy para filtrar horarios pasados
     const hoy = new Date().toISOString().split('T')[0];
     const esHoy = fecha === hoy;
-    
-    let horariosMañanaDisponibles = HORARIOS_MAÑANA;
-    let horariosTardeDisponibles = HORARIOS_TARDE;
     
     // Si es HOY, filtrar horarios que ya pasaron
     if (esHoy) {
@@ -618,43 +778,118 @@
         debug('🕐 Es hoy - Hora actual:', `${horaActual}:${minutoActual.toString().padStart(2, '0')}`);
         
         // Filtrar horarios mañana
-        horariosMañanaDisponibles = HORARIOS_MAÑANA.filter(hora => {
+        horariosMañanaDisponibles = horariosMañanaDisponibles.filter(hora => {
             const [h, m] = hora.split(':').map(Number);
             const tiempoHorario = h * 60 + m;
             return tiempoHorario > tiempoActual + 30; // 30 min de buffer
         });
         
         // Filtrar horarios tarde
-        horariosTardeDisponibles = HORARIOS_TARDE.filter(hora => {
+        horariosTardeDisponibles = horariosTardeDisponibles.filter(hora => {
             const [h, m] = hora.split(':').map(Number);
             const tiempoHorario = h * 60 + m;
             return tiempoHorario > tiempoActual + 30; // 30 min de buffer
         });
         
-        debug('⏰ Horarios disponibles hoy:', {
+        debug('⏰ Horarios disponibles hoy después de filtrar:', {
             mañana: horariosMañanaDisponibles.length,
             tarde: horariosTardeDisponibles.length
         });
     }
+    
+    // Mostrar mensaje del día si existe
+    const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const nombreDia = nombresDias[fechaObj.getDay()];
+    const mensajeDia = configuracionHorarios?.mensajes?.[nombreDia];
+    
+    if (mensajeDia) {
+        // Crear o actualizar el mensaje del día
+        let mensajeDiv = document.getElementById('mensajeDia');
+        if (!mensajeDiv) {
+            mensajeDiv = document.createElement('div');
+            mensajeDiv.id = 'mensajeDia';
+            mensajeDiv.className = 'bg-purple-100 text-purple-800 p-3 rounded-lg text-sm mb-4';
+            document.getElementById('horariosContainer').prepend(mensajeDiv);
+        }
+        
+        mensajeDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${mensajeDia}`;
+        mensajeDiv.style.display = 'block';
+    } else {
+        // Ocultar mensaje si no hay
+        const mensajeDiv = document.getElementById('mensajeDia');
+        if (mensajeDiv) {
+            mensajeDiv.style.display = 'none';
+        }
+    }
 
+    // Mostrar contenedor de horarios
     document.getElementById('horariosContainer').style.display = 'block';
-    generarHorarios('horariosMañana', horariosMañanaDisponibles);
-    generarHorarios('horariosTarde', horariosTardeDisponibles);
+    
+    // Generar slots de horarios según duración configurada
+    if (horariosMañanaDisponibles.length > 0) {
+        document.querySelector('#horariosContainer > div:first-child').style.display = 'block';
+        generarHorarios('horariosMañana', horariosMañanaDisponibles);
+    } else {
+        document.querySelector('#horariosContainer > div:first-child').style.display = 'none';
+    }
+    
+    if (horariosTardeDisponibles.length > 0) {
+        document.querySelector('#horariosContainer > div:nth-child(2)').style.display = 'block';
+        generarHorarios('horariosTarde', horariosTardeDisponibles);
+    } else {
+        document.querySelector('#horariosContainer > div:nth-child(2)').style.display = 'none';
+    }
 }
 
-        function generarHorarios(containerId, horarios) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-
-            horarios.forEach(hora => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'slot-disponible px-3 py-3 rounded-xl text-sm font-bold';
-                btn.textContent = hora;
-                btn.onclick = () => seleccionarHorario(hora, btn);
-                container.appendChild(btn);
-            });
+       function generarHorarios(containerId, horarios) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    if (horarios.length === 0) {
+        container.innerHTML = '<div class="text-gray-500 text-center p-3">No hay horarios disponibles</div>';
+        return;
+    }
+    
+    // Actualizar el título del contenedor con la duración si está configurada
+    const tituloContainer = container.closest('div').querySelector('.flex.items-center');
+    if (tituloContainer && duracionCita) {
+        const spanDuracion = tituloContainer.querySelector('.duracion-cita');
+        if (!spanDuracion) {
+            const span = document.createElement('span');
+            span.className = 'duracion-cita text-gray-500 ml-2 text-xs';
+            span.textContent = `(${duracionCita} min por cita)`;
+            tituloContainer.appendChild(span);
+        } else {
+            spanDuracion.textContent = `(${duracionCita} min por cita)`;
         }
+    }
+
+    horarios.forEach(hora => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'slot-disponible px-3 py-3 rounded-xl text-sm font-bold';
+        btn.textContent = hora;
+        
+        // Si hay duración configurada, mostrar el rango de hora
+        if (duracionCita && duracionCita > 0) {
+            const [horas, minutos] = hora.split(':').map(Number);
+            const finMinutos = minutos + duracionCita;
+            const finHoras = horas + Math.floor(finMinutos / 60);
+            const finMinutosAjustados = finMinutos % 60;
+            
+            const horaFin = `${finHoras.toString().padStart(2, '0')}:${finMinutosAjustados.toString().padStart(2, '0')}`;
+            btn.title = `${hora} - ${horaFin} (${duracionCita} min)`;
+            
+            // Opcional: Mostrar el rango de hora en el botón
+            if (duracionCita >= 45) { // Solo para duraciones largas
+                btn.innerHTML = `${hora}<br><span class="text-xs text-gray-100">hasta ${horaFin}</span>`;
+            }
+        }
+        
+        btn.onclick = () => seleccionarHorario(hora, btn);
+        container.appendChild(btn);
+    });
+}
 
         function seleccionarHorario(hora, elemento) {
             debug('⏰ Horario seleccionado', hora);
@@ -765,7 +1000,7 @@
             }
         }
 
-        async function guardarReserva(reserva) {
+async function guardarReserva(reserva) {
     debug('💾 Guardando reserva en Supabase...', reserva);
     
     try {
@@ -781,7 +1016,9 @@
             cliente_email: reserva.cliente_email || null,
             notas: reserva.notas || null,
             estado: 'pendiente',
-            confirmada: false
+            confirmada: false,
+            duracion_minutos: duracionCita || 30, // Guardar duración configurada
+            origen: origenInterno ? 'interno' : 'web' // Registrar origen de la reserva
         };
         
         debug('📤 Enviando a Supabase:', reservaData);
@@ -800,8 +1037,20 @@
         
         debug('✅ Reserva guardada exitosamente en Supabase', data);
         
-        // También enviar email de notificación al admin (opcional)
-        // await enviarEmailNotificacionAdmin(reservaData);
+        // Si la reserva viene del sistema interno, marcarla como confirmada
+        if (origenInterno) {
+            const { error: errorUpdate } = await supabase
+                .from('reservas')
+                .update({ confirmada: true, estado: 'confirmada' })
+                .eq('id', data.id);
+                
+            if (errorUpdate) {
+                debug('⚠️ Error actualizando estado de confirmación', errorUpdate);
+                // No lanzar error, ya que la reserva se guardó correctamente
+            } else {
+                debug('✅ Reserva marcada como confirmada (origen interno)');
+            }
+        }
         
         return data;
         
@@ -857,71 +1106,153 @@
             }
         }
 
-        function mostrarResumen(reserva) {
-            debug('📋 Mostrando resumen final');
-            
-            const fechaFormateada = new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-CL', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-            });
+     function mostrarResumen(reserva) {
+    debug('📋 Mostrando resumen final');
+    
+    const fechaFormateada = new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-CL', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+    
+    // Obtener duración de la cita para mostrarla
+    const duracionTexto = duracionCita 
+        ? `(${duracionCita} minutos)` 
+        : '';
 
-            document.getElementById('detallesReserva').innerHTML = `
-                <div class="space-y-3 text-white">
-                    <div class="flex items-center">
-                        <i class="fas fa-calendar-day w-6 text-white mr-3"></i>
-                        <span><strong>Fecha:</strong> ${fechaFormateada}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-clock w-6 text-white mr-3"></i>
-                        <span><strong>Hora:</strong> ${reserva.hora}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-user-tie w-6 text-white mr-3"></i>
-                        <span><strong>Barbero:</strong> ${reserva.barbero_nombre}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-user w-6 text-white mr-3"></i>
-                        <span><strong>Cliente:</strong> ${reserva.cliente_nombre}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <i class="fas fa-store w-6 text-white mr-3"></i>
-                        <span><strong>Barbería:</strong> ${reserva.barberia_nombre}</span>
-                    </div>
-                    ${reserva.notas ? `
-                        <div class="flex items-start">
-                            <i class="fas fa-comment w-6 text-white mr-3 mt-1"></i>
-                            <span><strong>Notas:</strong> ${reserva.notas}</span>
-                        </div>
-                    ` : ''}
+    document.getElementById('detallesReserva').innerHTML = `
+        <div class="space-y-3 text-white">
+            <div class="flex items-center">
+                <i class="fas fa-calendar-day w-6 text-white mr-3"></i>
+                <span><strong>Fecha:</strong> ${fechaFormateada}</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-clock w-6 text-white mr-3"></i>
+                <span><strong>Hora:</strong> ${reserva.hora} ${duracionTexto}</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-user-tie w-6 text-white mr-3"></i>
+                <span><strong>Barbero:</strong> ${reserva.barbero_nombre}</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-user w-6 text-white mr-3"></i>
+                <span><strong>Cliente:</strong> ${reserva.cliente_nombre}</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-store w-6 text-white mr-3"></i>
+                <span><strong>Barbería:</strong> ${reserva.barberia_nombre}</span>
+            </div>
+            ${reserva.notas ? `
+                <div class="flex items-start">
+                    <i class="fas fa-comment w-6 text-white mr-3 mt-1"></i>
+                    <span><strong>Notas:</strong> ${reserva.notas}</span>
                 </div>
-            `;
+            ` : ''}
+        </div>
+    `;
 
-            if (reserva.cliente_email) {
-                document.getElementById('mensajeEmail').style.display = 'block';
+    if (reserva.cliente_email) {
+        document.getElementById('mensajeEmail').style.display = 'block';
+    }
+
+    // Ocultar pasos y mostrar resumen
+    document.getElementById('paso1').style.display = 'none';
+    document.getElementById('paso2').style.display = 'none';
+    document.getElementById('paso3').style.display = 'none';
+    document.getElementById('resumenFinal').style.display = 'block';
+
+    document.getElementById('resumenFinal').scrollIntoView({ behavior: 'smooth' });
+    
+    // Si viene del origen interno, añadir botón para volver al sistema
+    if (origenInterno) {
+        const botonesDiv = document.createElement('div');
+        botonesDiv.className = 'mt-4';
+        botonesDiv.innerHTML = `
+            <button onclick="window.close()" class="w-full bg-white text-green-600 py-3 rounded-xl font-bold shadow-lg hover:bg-gray-100 transition-all duration-300 mt-2">
+                <i class="fas fa-arrow-left mr-2"></i>Volver al Sistema
+            </button>
+        `;
+        document.getElementById('resumenFinal').querySelector('.p-6').appendChild(botonesDiv);
+    }
+    
+    debug('🎉 Proceso completado exitosamente');
+}
+
+       // Event listeners adicionales
+document.addEventListener('DOMContentLoaded', () => {
+    debug('🎬 DOM completamente cargado');
+    
+    // Comprobar si hay fecha preseleccionada en URL
+    if (preseleccionarFecha) {
+        debug('📅 Fecha preseleccionada detectada', preseleccionarFecha);
+        try {
+            const fechaObj = new Date(preseleccionarFecha + 'T00:00:00');
+            if (!isNaN(fechaObj.getTime())) {
+                // Establecer el mes visualizado a la fecha preseleccionada
+                mesVisualizando = new Date(fechaObj.getFullYear(), fechaObj.getMonth(), 1);
+                
+                // Actualizar el calendario
+                generarCalendario();
+                
+                // Simular clic en el día
+                setTimeout(() => {
+                    const dias = document.querySelectorAll('#calendarioDias .dia-calendario');
+                    const diaObjetivo = Array.from(dias).find(dia => 
+                        !dia.classList.contains('mes-otro') && 
+                        parseInt(dia.textContent) === fechaObj.getDate()
+                    );
+                    
+                    if (diaObjetivo && !diaObjetivo.classList.contains('dia-pasado') && !diaObjetivo.classList.contains('dia-domingo')) {
+                        diaObjetivo.click();
+                        debug('✅ Fecha preseleccionada aplicada automáticamente');
+                    } else {
+                        debug('⚠️ No se pudo aplicar la fecha preseleccionada (día no disponible)');
+                    }
+                }, 500);
+            } else {
+                debug('❌ Formato de fecha preseleccionada inválido');
             }
-
-            // Ocultar pasos y mostrar resumen
-            document.getElementById('paso1').style.display = 'none';
-            document.getElementById('paso2').style.display = 'none';
-            document.getElementById('paso3').style.display = 'none';
-            document.getElementById('resumenFinal').style.display = 'block';
-
-            document.getElementById('resumenFinal').scrollIntoView({ behavior: 'smooth' });
-            
-            debug('🎉 Proceso completado exitosamente');
+        } catch (error) {
+            debug('❌ Error procesando fecha preseleccionada', error);
         }
+    }
+});
 
-        // Event listeners adicionales
-        document.addEventListener('DOMContentLoaded', () => {
-            debug('🎬 DOM completamente cargado');
-        });
+// Función para preseleccionar barbero automáticamente
+function preseleccionarBarberoAutomaticamente() {
+    if (preseleccionarBarbero && barberosDisponibles.length > 0) {
+        debug('👤 Barbero preseleccionado detectado', preseleccionarBarbero);
+        
+        // Buscar el barbero en la lista
+        const barberoBuscado = barberosDisponibles.find(b => b.id === preseleccionarBarbero);
+        
+        if (barberoBuscado) {
+            setTimeout(() => {
+                // Buscar la card del barbero y simular clic
+                const barberosCards = document.querySelectorAll('.barbero-card');
+                const index = barberosDisponibles.findIndex(b => b.id === preseleccionarBarbero);
+                
+                if (index >= 0 && barberosCards[index]) {
+                    barberosCards[index].click();
+                    debug('✅ Barbero preseleccionado aplicado automáticamente');
+                    
+                    // Forzar scroll al paso 3
+                    document.getElementById('paso3').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    debug('⚠️ No se encontró la card del barbero preseleccionado');
+                }
+            }, 1000);
+        } else {
+            debug('⚠️ ID de barbero preseleccionado no encontrado en la lista');
+        }
+    }
+}
 
-        // Manejo de errores globales
-        window.addEventListener('error', (e) => {
-            debug('❌ Error global capturado', e.error);
-        });
+// Manejo de errores globales
+window.addEventListener('error', (e) => {
+    debug('❌ Error global capturado', e.error);
+});
     </script>
 </body>
 </html>
