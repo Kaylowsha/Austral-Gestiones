@@ -1368,8 +1368,8 @@ async function guardarReserva(reserva) {
             notas: reserva.notas || null,
             estado: 'pendiente',
             confirmada: false,
-            duracion_minutos: duracionCita || 30, // Guardar duración configurada
             origen: origenInterno ? 'interno' : 'web' // Registrar origen de la reserva
+            // Removido el campo duracion_minutos que no existe en la tabla
         };
         
         debug('📤 Enviando a Supabase:', reservaData);
