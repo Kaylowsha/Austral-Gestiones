@@ -1355,7 +1355,7 @@ async function guardarReserva(reserva) {
     debug('💾 Guardando reserva en Supabase...', reserva);
     
     try {
-        // Preparar datos para Supabase
+        // Preparar datos para Supabase (solo campos que existen en la tabla)
         const reservaData = {
             barberia_id: reserva.barberia_id,
             barbero_id: reserva.barbero_id,
@@ -1367,9 +1367,8 @@ async function guardarReserva(reserva) {
             cliente_email: reserva.cliente_email || null,
             notas: reserva.notas || null,
             estado: 'pendiente',
-            confirmada: false,
-            origen: origenInterno ? 'interno' : 'web' // Registrar origen de la reserva
-            // Removido el campo duracion_minutos que no existe en la tabla
+            confirmada: false
+            // Removidos los campos duracion_minutos y origen que no existen en la tabla
         };
         
         debug('📤 Enviando a Supabase:', reservaData);
