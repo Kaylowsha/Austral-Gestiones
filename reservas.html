@@ -1320,9 +1320,11 @@ async function enviarEmailNotificacionAdmin(reserva, emailClienteEnviado) {
             horarioCompleto += ` (${duracionMostrar} min)`;
         }
 
-// Parámetros para el template de EmailJS - corregidos para coincidir con la plantilla
+// Parámetros para el template de EmailJS - necesitan coincidir con los campos en la plantilla
 const templateParams = {
-    email: barberiaData.email_avisos, // CRUCIAL: Debe ser "email" no "to_email"
+    email: barberiaData.email_avisos, // Campo crítico para EmailJS - destinatario
+    to_name: 'Administrador', // Nombre del destinatario
+    from_name: 'Sistema de Reservas', // Nombre del remitente
     origen: origenInterno ? 'Sistema interno' : 'Web pública',
     cliente_nombre: reserva.cliente_nombre,
     cliente_telefono: reserva.cliente_telefono,
@@ -1332,10 +1334,10 @@ const templateParams = {
     barbero_nombre: reserva.barbero_nombre,
     notas: reserva.notas || 'Sin notas',
     email_enviado: emailClienteEnviado ? 'Sí' : 'No',
-    barberia_nombre: reserva.barberia_nombre
+    barberia_nombre: barberiaData.nombre || 'Barbería'
 };
 
-        debug('📤 Enviando notificación al admin con datos:', templateParams);
+debug('📧 Parámetros exactos para admin:', templateParams);
         
         try {
             // Enviar email usando EmailJS con IDs de la nueva cuenta
@@ -1455,22 +1457,22 @@ async function guardarReserva(reserva) {
         if (duracionMostrar) {
             horarioCompleto += ` (${duracionMostrar} min)`;
         }
+// Parámetros para el template de EmailJS - necesitan coincidir con los campos en la plantilla
+const templateParams = {
+    email: reserva.cliente_email, // Campo crítico para EmailJS - destinatario
+    to_name: reserva.cliente_nombre, // Nombre del destinatario
+    from_name: barberiaData.nombre || 'Barbería', // Nombre del remitente
+    cliente_nombre: reserva.cliente_nombre, 
+    barberia_nombre: barberiaData.nombre || 'Barbería',
+    barbero_nombre: reserva.barbero_nombre,
+    fecha_formateada: fechaFormateada,
+    hora: horarioCompleto,
+    cliente_telefono: reserva.cliente_telefono,
+    notas: reserva.notas || 'Sin notas especiales',
+    origen: origenInterno ? 'Reserva realizada por el sistema' : 'Reserva realizada por el cliente'
+};
 
-        // Parámetros para el template de EmailJS
-        const templateParams = {
-            to_email: reserva.cliente_email,
-            email_barberia: barberiaData.email_avisos || 'barberia@default.com',
-            cliente_nombre: reserva.cliente_nombre,
-            barberia_nombre: reserva.barberia_nombre,
-            barbero_nombre: reserva.barbero_nombre,
-            fecha_formateada: fechaFormateada,
-            hora: horarioCompleto, // Usar horario con duración
-            cliente_telefono: reserva.cliente_telefono,
-            notas: reserva.notas || 'Sin notas especiales',
-            origen: origenInterno ? 'Reserva realizada por el sistema' : 'Reserva realizada por el cliente'
-        };
-
-        debug('📤 Enviando email al cliente con datos:', templateParams);
+debug('📧 Parámetros exactos:', templateParams);
         
         try {
             // Enviar email usando EmailJS con IDs de la nueva cuenta
