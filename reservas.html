@@ -770,69 +770,39 @@ function generarHorariosEnRango(desde, hasta, duracion) {
             }
         }
 
-    function generarCardsBarberos(barberos) {
-    const container = document.getElementById('barberosContainer');
-    container.innerHTML = '';
+        function generarCardsBarberos(barberos) {
+            const container = document.getElementById('barberosContainer');
+            container.innerHTML = '';
 
-    if (!barberos || barberos.length === 0) {
-        container.innerHTML = `
-            <div class="text-center p-6 bg-yellow-50 rounded-xl border border-yellow-200">
-                <i class="fas fa-calendar-times text-yellow-500 text-3xl mb-2"></i>
-                <h3 class="text-lg font-bold text-yellow-700 mb-1">Todos los barberos están ocupados</h3>
-                <p class="text-yellow-600">Para este horario no hay barberos disponibles.</p>
-                <button onclick="volverASeleccionarHorario()" 
-                        class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                    <i class="fas fa-clock mr-2"></i>Elegir otro horario
-                </button>
-            </div>
-        `;
-        return;
-    }
+            if (!barberos || barberos.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 p-4">❌ No hay barberos disponibles</div>';
+                return;
+            }
 
-    barberos.forEach((barbero, index) => {
-        const iconos = ['fas fa-user-tie', 'fas fa-male', 'fas fa-user-graduate'];
-        const colores = ['from-blue-400 to-blue-600', 'from-purple-400 to-purple-600', 'from-green-400 to-green-600'];
-        
-        const card = document.createElement('div');
-        card.className = 'barbero-card';
-        card.innerHTML = `
-            <div class="flex items-center space-x-4">
-                <div class="bg-gradient-to-r ${colores[index % colores.length]} w-12 h-12 rounded-full flex items-center justify-center text-white">
-                    <i class="${iconos[index % iconos.length]}"></i>
-                </div>
-                <div class="flex-1">
-                    <h3 class="font-bold text-gray-800">${barbero.nombre}</h3>
-                    <p class="text-gray-500 text-sm">Barbero profesional</p>
-                </div>
-                <div class="text-green-500">
-                    <i class="fas fa-check-circle hidden selected-icon"></i>
-                </div>
-            </div>
-        `;
-        card.onclick = () => seleccionarBarbero(barbero.id, card);
-        container.appendChild(card);
-    });
-}
-
-// NUEVA FUNCIÓN: Volver a selección de horarios
-function volverASeleccionarHorario() {
-    // Ocultar paso 2
-    document.getElementById('paso2').style.display = 'none';
-    
-    // Limpiar selección de horario
-    document.querySelectorAll('.slot-seleccionado').forEach(el => {
-        el.classList.remove('slot-seleccionado');
-        el.classList.add('slot-disponible');
-    });
-    
-    horarioSeleccionado = null;
-    
-    // Actualizar progreso
-    actualizarProgreso(1);
-    
-    // Hacer scroll al contenedor de horarios
-    document.getElementById('horariosContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
+            barberos.forEach((barbero, index) => {
+                const iconos = ['fas fa-user-tie', 'fas fa-male', 'fas fa-user-graduate'];
+                const colores = ['from-blue-400 to-blue-600', 'from-purple-400 to-purple-600', 'from-green-400 to-green-600'];
+                
+                const card = document.createElement('div');
+                card.className = 'barbero-card';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="bg-gradient-to-r ${colores[index % colores.length]} w-12 h-12 rounded-full flex items-center justify-center text-white">
+                            <i class="${iconos[index % iconos.length]}"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-800">${barbero.nombre}</h3>
+                            <p class="text-gray-500 text-sm">Barbero profesional</p>
+                        </div>
+                        <div class="text-green-500">
+                            <i class="fas fa-check-circle hidden selected-icon"></i>
+                        </div>
+                    </div>
+                `;
+                card.onclick = () => seleccionarBarbero(barbero.id, card);
+                container.appendChild(card);
+            });
+        }
 
         function seleccionarBarbero(barberoId, cardElement) {
             debug('👤 Barbero seleccionado', barberoId);
@@ -1172,7 +1142,7 @@ function volverASeleccionarHorario() {
     });
 }
 
-  function seleccionarHorario(hora, elemento) {
+       function seleccionarHorario(hora, elemento) {
     debug('⏰ Horario seleccionado', hora);
     
     document.querySelectorAll('.slot-seleccionado').forEach(el => {
@@ -1199,112 +1169,16 @@ function volverASeleccionarHorario() {
         window.sessionStorage.setItem('duracionCita', duracionCita.toString());
     }
     
-    // NUEVO: Consultar barberos disponibles para este horario
-    consultarBarberosDisponibles(fechaSeleccionada, hora);
-    
     actualizarProgreso(2);
-    // No llamamos a mostrarPaso2() aquí ya que se llamará después de obtener los barberos disponibles
+    mostrarPaso2();
 }
 
-// NUEVA FUNCIÓN: Consultar barberos disponibles para un horario específico
-async function consultarBarberosDisponibles(fecha, hora) {
-    debug('👥 Consultando barberos disponibles para', fecha, hora);
-    
-    try {
-        // Mostrar indicador de carga en el container de barberos
-        const container = document.getElementById('barberosContainer');
-        container.innerHTML = `
-            <div class="text-center p-6">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-                <p class="mt-2 text-gray-600">Consultando barberos disponibles...</p>
-            </div>
-        `;
-        
-        // 1. Obtener todos los barberos activos
-        const { data: todosBarberos, error: errorBarberos } = await supabase
-            .from('usuarios')
-            .select('*')
-            .eq('barberia_id', barberiaId)
-            .eq('activo', true);
-            
-        if (errorBarberos) {
-            debug('❌ Error obteniendo barberos', errorBarberos);
-            throw errorBarberos;
+        function mostrarPaso2() {
+            if (!horarioSeleccionado) return;
+            debug('➡️ Mostrando paso 2 - Barberos');
+            document.getElementById('paso2').style.display = 'block';
+            document.getElementById('paso2').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        
-        if (!todosBarberos || todosBarberos.length === 0) {
-            debug('❌ No hay barberos activos para esta barbería');
-            container.innerHTML = `
-                <div class="text-center text-red-500 p-6">
-                    <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
-                    <p>No hay barberos disponibles en este momento</p>
-                </div>
-            `;
-            mostrarPaso2(); // Mostrar el paso 2 aunque no haya barberos
-            return;
-        }
-        
-        // 2. Obtener reservas existentes para esa fecha y horario
-        const { data: reservasExistentes, error: errorReservas } = await supabase
-            .from('reservas')
-            .select('barbero_id')
-            .eq('fecha', fecha)
-            .eq('hora', hora)
-            .not('estado', 'eq', 'cancelada'); // Excluir reservas canceladas
-            
-        if (errorReservas) {
-            debug('❌ Error obteniendo reservas', errorReservas);
-            throw errorReservas;
-        }
-        
-        // 3. Filtrar barberos que ya tienen reserva a esa hora
-        const barberosOcupados = reservasExistentes?.map(r => r.barbero_id) || [];
-        
-        debug('🔍 Barberos ocupados a las ' + hora + ':', barberosOcupados);
-        
-        // 4. Filtrar solo barberos disponibles
-        const barberosDisponibles = todosBarberos.filter(
-            barbero => !barberosOcupados.includes(barbero.id)
-        );
-        
-        debug('✅ Barberos disponibles:', barberosDisponibles);
-        
-       // Actualizar la variable global
-window.barberosDisponibles = barberosDisponibles;
-        
-        // 5. Generar las tarjetas de barberos disponibles
-        generarCardsBarberos(barberosDisponibles);
-        
-        // Mostrar el paso 2
-        mostrarPaso2();
-    } catch (error) {
-        debug('❌ Error consultando barberos disponibles', error);
-        console.error('Error:', error);
-        
-        // Mostrar mensaje de error
-        const container = document.getElementById('barberosContainer');
-        container.innerHTML = `
-            <div class="text-center text-red-500 p-6">
-                <i class="fas fa-exclamation-triangle text-3xl mb-2"></i>
-                <p>Ocurrió un error al consultar barberos disponibles</p>
-                <button onclick="consultarBarberosDisponibles('${fechaSeleccionada}', '${horarioSeleccionado}')" 
-                        class="mt-3 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                    <i class="fas fa-sync-alt mr-2"></i>Reintentar
-                </button>
-            </div>
-        `;
-        
-        // Aún así mostrar el paso 2
-        mostrarPaso2();
-    }
-}
-
-function mostrarPaso2() {
-    if (!horarioSeleccionado) return;
-    debug('➡️ Mostrando paso 2 - Barberos');
-    document.getElementById('paso2').style.display = 'block';
-    document.getElementById('paso2').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
 
         function mostrarPaso3() {
             if (!barberoSeleccionado) return;
@@ -1490,25 +1364,27 @@ debug('📧 Parámetros exactos para admin:', templateParams);
     }
 }
 
-debug('📤 Enviando a Supabase:', reservaData);
+async function guardarReserva(reserva) {
+    debug('💾 Guardando reserva en Supabase...', reserva);
+    
+    try {
+        // Preparar datos para Supabase (solo campos que existen en la tabla)
+        const reservaData = {
+            barberia_id: reserva.barberia_id,
+            barbero_id: reserva.barbero_id,
+            barbero_nombre: reserva.barbero_nombre,
+            fecha: reserva.fecha,
+            hora: reserva.hora,
+            cliente_nombre: reserva.cliente_nombre,
+            cliente_telefono: reserva.cliente_telefono,
+            cliente_email: reserva.cliente_email || null,
+            notas: reserva.notas || null,
+            estado: 'pendiente',
+            confirmada: false
+            // Removidos los campos duracion_minutos y origen que no existen en la tabla
+        };
         
-        // NUEVO: Verificar disponibilidad antes de guardar
-        const { data: reservasExistentes, error: errorConsulta } = await supabase
-            .from('reservas')
-            .select('id')
-            .eq('fecha', reserva.fecha)
-            .eq('hora', reserva.hora)
-            .eq('barbero_id', reserva.barbero_id)
-            .not('estado', 'eq', 'cancelada');
-            
-        if (errorConsulta) {
-            debug('⚠️ Error verificando disponibilidad', errorConsulta);
-            // Continuamos a pesar del error (degradación elegante)
-        } else if (reservasExistentes && reservasExistentes.length > 0) {
-            // El barbero ya tiene una reserva en este horario
-            debug('❌ El barbero ya no está disponible en este horario');
-            throw new Error('El barbero ya no está disponible en este horario. Por favor, selecciona otro horario u otro barbero.');
-        }
+        debug('📤 Enviando a Supabase:', reservaData);
         
         // Insertar en Supabase
         const { data, error } = await supabase
