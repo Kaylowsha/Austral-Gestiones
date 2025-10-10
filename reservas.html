@@ -1319,10 +1319,9 @@ async function enviarEmailNotificacionAdmin(reserva, emailClienteEnviado) {
         if (duracionMostrar) {
             horarioCompleto += ` (${duracionMostrar} min)`;
         }
-
 // Parámetros para el template de EmailJS - necesitan coincidir con los campos en la plantilla
 const templateParams = {
-    email: barberiaData.email_avisos, // Campo crítico para EmailJS - destinatario
+    to_email: barberiaData.email_avisos, // Campo crítico para EmailJS - destinatario (CORREGIDO)
     to_name: 'Administrador', // Nombre del destinatario
     from_name: 'Sistema de Reservas', // Nombre del remitente
     origen: origenInterno ? 'Sistema interno' : 'Web pública',
@@ -1333,7 +1332,7 @@ const templateParams = {
     hora: horarioCompleto,
     barbero_nombre: reserva.barbero_nombre,
     notas: reserva.notas || 'Sin notas',
-    email_enviado: emailClienteEnviado ? 'Sí' : 'No',
+    email_enviado: 'Desconocido', // CORREGIDO: Eliminada referencia a variable indefinida
     barberia_nombre: barberiaData.nombre || 'Barbería'
 };
 
@@ -1483,12 +1482,12 @@ debug('📧 Parámetros exactos para admin:', templateParams);
     try {
     // Enviar email usando EmailJS con IDs de la nueva cuenta
     const response = await emailjs.send(
-        EMAIL_CONFIG.SERVICE_ID,         // Service ID
-        EMAIL_CONFIG.TEMPLATE_ADMIN_ID,  // Template ID para ADMINISTRADOR
+        EMAIL_CONFIG.SERVICE_ID,           // Usa el Service ID configurado
+        EMAIL_CONFIG.TEMPLATE_CLIENTE_ID,  // Usa el Template ID para clientes  
         templateParams
     );
     
-    debug('✅ Notificación al admin enviada exitosamente', response);
+    debug('✅ Email enviado exitosamente al cliente', response);
     
     // Mostrar mensaje en la interfaz
     document.getElementById('mensajeEmail').style.display = 'block';
@@ -1505,35 +1504,23 @@ debug('📧 Parámetros exactos para admin:', templateParams);
     debug('❌ Mensaje de error: ' + emailError.message);
     throw emailError; // Re-lanzar para el manejo en el catch principal
 }
-        
-        // Mostrar mensaje en la interfaz
+} catch (error) {
+    debug('❌ Error enviando email al cliente', error);
+    console.error('Error enviando email al cliente:', error);
+    
+    // Mostrar mensaje de error en la interfaz, pero no bloquear el flujo
+    if (document.getElementById('mensajeEmail')) {
         document.getElementById('mensajeEmail').style.display = 'block';
+        document.getElementById('mensajeEmail').className = 'bg-red-100 bg-opacity-20 backdrop-blur-sm rounded-xl p-3 mb-4';
         document.getElementById('mensajeEmail').innerHTML = `
-            <i class="fas fa-envelope mr-2"></i>
-            <span class="text-sm">Confirmación enviada a ${reserva.cliente_email}</span>
+            <i class="fas fa-exclamation-triangle text-red-300 mr-2"></i>
+            <span class="text-sm">No se pudo enviar email de confirmación</span>
         `;
-        
-        return true;
-        
-    } catch (error) {
-        debug('❌ Error enviando email al cliente', error);
-        console.error('Error enviando email al cliente:', error);
-        
-        // Mostrar mensaje de error en la interfaz, pero no bloquear el flujo
-        if (document.getElementById('mensajeEmail')) {
-            document.getElementById('mensajeEmail').style.display = 'block';
-            document.getElementById('mensajeEmail').className = 'bg-red-100 bg-opacity-20 backdrop-blur-sm rounded-xl p-3 mb-4';
-            document.getElementById('mensajeEmail').innerHTML = `
-                <i class="fas fa-exclamation-triangle text-red-300 mr-2"></i>
-                <span class="text-sm">No se pudo enviar email de confirmación</span>
-            `;
-        }
-        
-        // No lanzar error - el email es opcional
-        return false;
     }
+    
+    // No lanzar error - el email es opcional
+    return false;
 }
-
   function mostrarResumen(reserva) {
     debug('📋 Mostrando resumen final');
     
