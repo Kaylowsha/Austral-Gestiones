@@ -17,8 +17,29 @@
             box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .slot-disponible {
-            @apply bg-gradient-to-r from-green-400 to-green-500 text-white font-semibold hover:from-green-500 hover:to-green-600 cursor-pointer transition-all duration-300 transform hover:scale-105 shadow-lg;
-        }
+    @apply bg-gradient-to-r from-green-400 to-green-500 text-white font-semibold hover:from-green-500 hover:to-green-600 cursor-pointer transition-all duration-300 transform hover:scale-105 shadow-lg relative;
+}
+.slot-con-info::after {
+    content: attr(data-info);
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 10px;
+    white-space: nowrap;
+    transform: scale(0.9);
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+.slot-con-info:hover::after {
+    transform: scale(1);
+    opacity: 1;
+    bottom: -8px;
+    right: -8px;
+}
         .slot-ocupado {
             @apply bg-gray-200 text-gray-500 cursor-not-allowed;
         }
@@ -138,27 +159,29 @@
                 </div>
 
                 <div id="horariosContainer" style="display:none;">
-                    <!-- Horarios Mañana -->
-                    <div class="mb-6">
-                        <div class="flex items-center mb-3">
-                            <i class="fas fa-sun text-yellow-500 mr-2"></i>
-                            <span class="font-bold text-gray-700">Mañana (10:00 - 12:30)</span>
-                        </div>
-                        <div id="horariosMañana" class="horarios-grid">
-                            <!-- Se llenará dinámicamente -->
-                        </div>
+                   <!-- Horarios Mañana -->
+                <div class="mb-6">
+                    <div class="flex items-center mb-3">
+                        <i class="fas fa-sun text-yellow-500 mr-2"></i>
+                        <span class="font-bold text-gray-700">Mañana</span>
+                        <span class="text-xs text-gray-500 ml-2 duracion-cita"></span>
                     </div>
+                    <div id="horariosMañana" class="horarios-grid">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
 
-                    <!-- Horarios Tarde -->
-                    <div class="mb-4">
-                        <div class="flex items-center mb-3">
-                            <i class="fas fa-moon text-indigo-500 mr-2"></i>
-                            <span class="font-bold text-gray-700">Tarde (15:00 - 18:30)</span>
-                        </div>
-                        <div id="horariosTarde" class="horarios-grid">
-                            <!-- Se llenará dinámicamente -->
-                        </div>
+                <!-- Horarios Tarde -->
+                <div class="mb-4">
+                    <div class="flex items-center mb-3">
+                        <i class="fas fa-moon text-indigo-500 mr-2"></i>
+                        <span class="font-bold text-gray-700">Tarde</span>
+                        <span class="text-xs text-gray-500 ml-2 duracion-cita"></span>
                     </div>
+                    <div id="horariosTarde" class="horarios-grid">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -937,7 +960,7 @@ function cargarConfiguracionHorarios(barberia) {
     }
 }
 
-       function generarHorarios(containerId, horarios) {
+ function generarHorarios(containerId, horarios) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
     
@@ -946,17 +969,35 @@ function cargarConfiguracionHorarios(barberia) {
         return;
     }
     
-    // Actualizar el título del contenedor con la duración si está configurada
+    // Actualizar el título del contenedor con la duración
     const tituloContainer = container.closest('div').querySelector('.flex.items-center');
-    if (tituloContainer && duracionCita) {
+    if (tituloContainer) {
         const spanDuracion = tituloContainer.querySelector('.duracion-cita');
-        if (!spanDuracion) {
-            const span = document.createElement('span');
-            span.className = 'duracion-cita text-gray-500 ml-2 text-xs';
-            span.textContent = `(${duracionCita} min por cita)`;
-            tituloContainer.appendChild(span);
-        } else {
+        if (spanDuracion && duracionCita) {
             spanDuracion.textContent = `(${duracionCita} min por cita)`;
+        }
+    }
+
+    // Determinar los horarios principales en función del contenedor
+    let horariosTexto = '10:00 - 12:30';
+    if (containerId === 'horariosTarde') {
+        horariosTexto = '15:00 - 20:00';
+    }
+    
+    // Determinar el primer y último horario
+    if (horarios.length > 0) {
+        const horariosSorted = [...horarios].sort();
+        const primero = horariosSorted[0];
+        const ultimo = horariosSorted[horariosSorted.length - 1];
+        horariosTexto = `${primero} - ${ultimo}`;
+    }
+    
+    // Actualizar el título con el rango real de horarios
+    if (tituloContainer) {
+        const spanPrincipal = tituloContainer.querySelector('span.font-bold');
+        if (spanPrincipal) {
+            spanPrincipal.textContent = 
+                containerId === 'horariosMañana' ? `Mañana (${horariosTexto})` : `Tarde (${horariosTexto})`;
         }
     }
 
@@ -966,7 +1007,7 @@ function cargarConfiguracionHorarios(barberia) {
         btn.className = 'slot-disponible px-3 py-3 rounded-xl text-sm font-bold';
         btn.textContent = hora;
         
-        // Si hay duración configurada, mostrar el rango de hora
+        // Si hay duración configurada, añadir información
         if (duracionCita && duracionCita > 0) {
             const [horas, minutos] = hora.split(':').map(Number);
             const finMinutos = minutos + duracionCita;
@@ -974,10 +1015,16 @@ function cargarConfiguracionHorarios(barberia) {
             const finMinutosAjustados = finMinutos % 60;
             
             const horaFin = `${finHoras.toString().padStart(2, '0')}:${finMinutosAjustados.toString().padStart(2, '0')}`;
+            
+            // Título para tooltip nativo
             btn.title = `${hora} - ${horaFin} (${duracionCita} min)`;
             
-            // Opcional: Mostrar el rango de hora en el botón
-            if (duracionCita >= 45) { // Solo para duraciones largas
+            // Añadir clase para badge visual y atributo data-info
+            btn.classList.add('slot-con-info');
+            btn.setAttribute('data-info', `${duracionCita}m`);
+            
+            // Para duraciones largas (45+ min) mostrar rango completo
+            if (duracionCita >= 45) {
                 btn.innerHTML = `${hora}<br><span class="text-xs text-gray-100">hasta ${horaFin}</span>`;
             }
         }
