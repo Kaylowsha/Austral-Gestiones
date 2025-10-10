@@ -987,21 +987,36 @@ function cargarConfiguracionHorarios(barberia) {
     });
 }
 
-        function seleccionarHorario(hora, elemento) {
-            debug('⏰ Horario seleccionado', hora);
-            
-            document.querySelectorAll('.slot-seleccionado').forEach(el => {
-                el.classList.remove('slot-seleccionado');
-                el.classList.add('slot-disponible');
-            });
+       function seleccionarHorario(hora, elemento) {
+    debug('⏰ Horario seleccionado', hora);
+    
+    document.querySelectorAll('.slot-seleccionado').forEach(el => {
+        el.classList.remove('slot-seleccionado');
+        el.classList.add('slot-disponible');
+    });
 
-            elemento.classList.remove('slot-disponible');
-            elemento.classList.add('slot-seleccionado');
-            
-            horarioSeleccionado = hora;
-            actualizarProgreso(2);
-            mostrarPaso2();
-        }
+    elemento.classList.remove('slot-disponible');
+    elemento.classList.add('slot-seleccionado');
+    
+    // Guardar hora seleccionada y calcular hora fin
+    horarioSeleccionado = hora;
+    
+    // Calcular hora fin para mostrar en pasos siguientes
+    if (duracionCita > 0) {
+        const [horas, minutos] = hora.split(':').map(Number);
+        const finMinutos = minutos + duracionCita;
+        const finHoras = horas + Math.floor(finMinutos / 60);
+        const finMinutosAjustados = finMinutos % 60;
+        const horaFin = `${finHoras.toString().padStart(2, '0')}:${finMinutosAjustados.toString().padStart(2, '0')}`;
+        
+        // Guardar en sessionStorage para uso posterior
+        window.sessionStorage.setItem('horaFinSeleccionada', horaFin);
+        window.sessionStorage.setItem('duracionCita', duracionCita.toString());
+    }
+    
+    actualizarProgreso(2);
+    mostrarPaso2();
+}
 
         function mostrarPaso2() {
             if (!horarioSeleccionado) return;
@@ -1202,7 +1217,7 @@ async function guardarReserva(reserva) {
             }
         }
 
-     function mostrarResumen(reserva) {
+  function mostrarResumen(reserva) {
     debug('📋 Mostrando resumen final');
     
     const fechaFormateada = new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-CL', {
@@ -1212,10 +1227,18 @@ async function guardarReserva(reserva) {
         year: 'numeric'
     });
     
-    // Obtener duración de la cita para mostrarla
-    const duracionTexto = duracionCita 
-        ? `(${duracionCita} minutos)` 
-        : '';
+    // Recuperar datos de duración y hora fin
+    const duracionMostrar = window.sessionStorage.getItem('duracionCita') || duracionCita || 30;
+    const horaFin = window.sessionStorage.getItem('horaFinSeleccionada') || '';
+    
+    // Construir texto de horario
+    let horarioTexto = reserva.hora;
+    if (horaFin) {
+        horarioTexto += ` - ${horaFin}`;
+    }
+    if (duracionMostrar) {
+        horarioTexto += ` (${duracionMostrar} min)`;
+    }
 
     document.getElementById('detallesReserva').innerHTML = `
         <div class="space-y-3 text-white">
@@ -1225,7 +1248,7 @@ async function guardarReserva(reserva) {
             </div>
             <div class="flex items-center">
                 <i class="fas fa-clock w-6 text-white mr-3"></i>
-                <span><strong>Hora:</strong> ${reserva.hora} ${duracionTexto}</span>
+                <span><strong>Hora:</strong> ${horarioTexto}</span>
             </div>
             <div class="flex items-center">
                 <i class="fas fa-user-tie w-6 text-white mr-3"></i>
