@@ -1267,11 +1267,12 @@ const EMAIL_CONFIG = {
             emailClienteEnviado = await enviarEmailConfirmacion(reserva);
         }
         
-        // Enviar notificación al administrador/barbería siempre
-        if (barberiaData.email_avisos) {
-            debug('📧 Enviando notificación al administrador...');
-            await enviarEmailNotificacionAdmin(reserva, emailClienteEnviado);
-        }
+     // Enviar notificación al administrador/barbería siempre
+if (barberiaData.email_avisos) {
+    debug('📧 Enviando notificación al administrador...');
+    debug('📧 Email de notificación de la barbería: ' + barberiaData.email_avisos);
+    await enviarEmailNotificacionAdmin(reserva, emailClienteEnviado);
+}
 
         mostrarResumen(reserva);
 
