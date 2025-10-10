@@ -1463,34 +1463,32 @@ async function guardarReserva(reserva) {
         }
 // Parámetros para el template de EmailJS - necesitan coincidir con los campos en la plantilla
 const templateParams = {
-    email: reserva.cliente_email, // Campo crítico para EmailJS - destinatario
-    to_name: reserva.cliente_nombre, // Nombre del destinatario
-    from_name: barberiaData.nombre || 'Barbería', // Nombre del remitente
-    cliente_nombre: reserva.cliente_nombre, 
-    barberia_nombre: barberiaData.nombre || 'Barbería',
-    barbero_nombre: reserva.barbero_nombre,
+    to_email: barberiaData.email_avisos, // Campo crítico para EmailJS - destinatario (CORREGIDO)
+    to_name: 'Administrador', // Nombre del destinatario
+    from_name: 'Sistema de Reservas', // Nombre del remitente
+    origen: origenInterno ? 'Sistema interno' : 'Web pública',
+    cliente_nombre: reserva.cliente_nombre,
+    cliente_telefono: reserva.cliente_telefono,
+    cliente_email: reserva.cliente_email || 'No proporcionado',
     fecha_formateada: fechaFormateada,
     hora: horarioCompleto,
-    cliente_telefono: reserva.cliente_telefono,
-    notas: reserva.notas || 'Sin notas especiales',
-    origen: origenInterno ? 'Reserva realizada por el sistema' : 'Reserva realizada por el cliente'
+    barbero_nombre: reserva.barbero_nombre,
+    notas: reserva.notas || 'Sin notas',
+    email_enviado: emailClienteEnviado ? 'Sí' : 'No',
+    barberia_nombre: barberiaData.nombre || 'Barbería'
 };
 
-debug('📧 Parámetros exactos:', templateParams);
+debug('📧 Parámetros exactos para admin:', templateParams);
         
-      try {
+    try {
     // Enviar email usando EmailJS con IDs de la nueva cuenta
-    // MODIFICACIÓN: Añadir cuarto parámetro explícito para el email de destino
     const response = await emailjs.send(
-        EMAIL_CONFIG.SERVICE_ID,           // Usa el Service ID configurado
-        EMAIL_CONFIG.TEMPLATE_CLIENTE_ID,  // Usa el Template ID para clientes  
-        templateParams,
-        {
-            to_email: reserva.cliente_email  // Configuración explícita del destinatario
-        }
+        EMAIL_CONFIG.SERVICE_ID,         // Service ID
+        EMAIL_CONFIG.TEMPLATE_ADMIN_ID,  // Template ID para ADMINISTRADOR
+        templateParams
     );
     
-    debug('✅ Email enviado exitosamente al cliente', response);
+    debug('✅ Notificación al admin enviada exitosamente', response);
     
     // Mostrar mensaje en la interfaz
     document.getElementById('mensajeEmail').style.display = 'block';
