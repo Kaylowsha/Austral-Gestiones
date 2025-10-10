@@ -528,6 +528,73 @@ function cargarConfiguracionHorarios(barberia) {
                 }
             }
             
+            // Convertir el nuevo formato al formato que espera el sistema
+            if (config.dias && !config.diasActivos) {
+                debug('🔄 Detectado formato nuevo de configuración, convirtiendo...');
+                
+                try {
+                    // Duración de citas
+                    const duracionCitasConfig = parseInt(config.duracion_citas) || 30;
+                    
+                    // Crear estructura base convertida
+                    const nuevaConfig = {
+                        diasActivos: {},
+                        horarios: {},
+                        mensajes: {},
+                        duracionCita: duracionCitasConfig,
+                        mensajeGlobal: ''
+                    };
+                    
+                    // Convertir cada día
+                    const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+                    dias.forEach(dia => {
+                        if (!config.dias[dia]) {
+                            // Si no existe el día, usar valores por defecto
+                            nuevaConfig.diasActivos[dia] = configDefault.diasActivos[dia];
+                            nuevaConfig.horarios[dia] = configDefault.horarios[dia];
+                            nuevaConfig.mensajes[dia] = '';
+                            return; // Continuar con el siguiente día
+                        }
+                        
+                        // Estado activo del día
+                        nuevaConfig.diasActivos[dia] = config.dias[dia].activo || false;
+                        
+                        // Inicializar horarios para este día
+                        nuevaConfig.horarios[dia] = { manana: [], tarde: [] };
+                        
+                        // Procesar horarios de mañana
+                        if (config.dias[dia].manana && config.dias[dia].manana.activo) {
+                            const desde = config.dias[dia].manana.desde || '10:00';
+                            const hasta = config.dias[dia].manana.hasta || '13:00';
+                            nuevaConfig.horarios[dia].manana = generarHorariosEnRango(desde, hasta, duracionCitasConfig);
+                            
+                            // Mensaje de mañana
+                            if (config.dias[dia].manana.mensaje) {
+                                nuevaConfig.mensajes[dia] = config.dias[dia].manana.mensaje;
+                            }
+                        }
+                        
+                        // Procesar horarios de tarde
+                        if (config.dias[dia].tarde && config.dias[dia].tarde.activo) {
+                            const desde = config.dias[dia].tarde.desde || '15:00';
+                            const hasta = config.dias[dia].tarde.hasta || '20:00';
+                            nuevaConfig.horarios[dia].tarde = generarHorariosEnRango(desde, hasta, duracionCitasConfig);
+                            
+                            // Si no hay mensaje de mañana, usar el de tarde
+                            if (config.dias[dia].tarde.mensaje && !nuevaConfig.mensajes[dia]) {
+                                nuevaConfig.mensajes[dia] = config.dias[dia].tarde.mensaje;
+                            }
+                        }
+                    });
+                    
+                    debug('✅ Configuración convertida exitosamente:', nuevaConfig);
+                    config = nuevaConfig;
+                } catch (e) {
+                    debug('❌ Error convirtiendo formato de configuración', e);
+                    // Mantener el objeto original y continuar
+                }
+            }
+            
             // Validar estructura completa y normalizar
             let configNormalizada = {
                 diasActivos: config.diasActivos || configDefault.diasActivos,
@@ -622,6 +689,47 @@ function cargarConfiguracionHorarios(barberia) {
             duracionCita: 30
         };
     }
+}
+
+// Función para generar horarios en un rango
+function generarHorariosEnRango(desde, hasta, duracion) {
+    const horarios = [];
+    
+    // Validar entrada
+    if (!desde || !hasta || !duracion) {
+        debug('⚠️ Parámetros inválidos para generarHorariosEnRango');
+        return horarios;
+    }
+    
+    try {
+        // Convertir strings a objetos Date
+        let [horaDesde, minDesde] = desde.split(':').map(Number);
+        let [horaHasta, minHasta] = hasta.split(':').map(Number);
+        
+        // Validar horas
+        if (isNaN(horaDesde) || isNaN(minDesde) || isNaN(horaHasta) || isNaN(minHasta)) {
+            debug('⚠️ Formato de hora inválido en generarHorariosEnRango');
+            return horarios;
+        }
+        
+        // Tiempo actual en minutos desde el inicio del día
+        let tiempoActual = horaDesde * 60 + minDesde;
+        const tiempoFin = horaHasta * 60 + minHasta;
+        
+        // Generar horarios
+        while (tiempoActual < tiempoFin) {
+            const hora = Math.floor(tiempoActual / 60);
+            const minuto = tiempoActual % 60;
+            horarios.push(`${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`);
+            tiempoActual += duracion;
+        }
+        
+        debug(`✅ Generados ${horarios.length} horarios entre ${desde} y ${hasta}`);
+    } catch (e) {
+        debug('❌ Error en generarHorariosEnRango', e);
+    }
+    
+    return horarios;
 }
 
         // FUNCIÓN CORREGIDA: Cargar barberos  
