@@ -1142,7 +1142,7 @@ function generarHorariosEnRango(desde, hasta, duracion) {
     });
 }
 
-       function seleccionarHorario(hora, elemento) {
+function seleccionarHorario(hora, elemento) {
     debug('⏰ Horario seleccionado', hora);
     
     document.querySelectorAll('.slot-seleccionado').forEach(el => {
@@ -1169,16 +1169,141 @@ function generarHorariosEnRango(desde, hasta, duracion) {
         window.sessionStorage.setItem('duracionCita', duracionCita.toString());
     }
     
-    actualizarProgreso(2);
+    // Verificar disponibilidad de barberos antes de mostrar paso 2
+    verificarBarberosDisponibles(fechaSeleccionada, hora);
+}
+
+       function mostrarPaso2() {
+    if (!horarioSeleccionado) return;
+    debug('➡️ Mostrando paso 2 - Barberos');
+    document.getElementById('paso2').style.display = 'block';
+    document.getElementById('paso2').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Función para verificar disponibilidad de barberos
+function verificarBarberosDisponibles(fecha, hora) {
+    debug('👥 Verificando barberos disponibles para', fecha, hora);
+    
+    // Mostrar indicador de carga en el contenedor de barberos
+    const barberosContainer = document.getElementById('barberosContainer');
+    barberosContainer.innerHTML = `
+        <div class="text-center p-4">
+            <div class="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+            <p class="text-gray-600">Verificando disponibilidad...</p>
+        </div>
+    `;
+    
+    // 1. Obtener todos los barberos activos
+    supabase.from('usuarios')
+        .select('*')
+        .eq('barberia_id', barberiaId)
+        .eq('activo', true)
+        .then(respuestaBarberos => {
+            if (respuestaBarberos.error) {
+                debug('❌ Error al cargar barberos:', respuestaBarberos.error);
+                mostrarErrorBarberos('Error al cargar barberos');
+                return;
+            }
+            
+            const todosBarberos = respuestaBarberos.data || [];
+            
+            if (todosBarberos.length === 0) {
+                debug('⚠️ No hay barberos activos');
+                mostrarErrorBarberos('No hay barberos disponibles');
+                return;
+            }
+            
+            // 2. Obtener reservas existentes para esa fecha y hora
+            supabase.from('reservas')
+                .select('barbero_id')
+                .eq('fecha', fecha)
+                .eq('hora', hora)
+                .neq('estado', 'cancelada')
+                .then(respuestaReservas => {
+                    if (respuestaReservas.error) {
+                        debug('❌ Error al verificar reservas:', respuestaReservas.error);
+                        // Mostramos todos los barberos si hay error en la verificación
+                        generarCardsBarberos(todosBarberos);
+                        mostrarPaso2();
+                        return;
+                    }
+                    
+                    const reservasExistentes = respuestaReservas.data || [];
+                    const barberosOcupados = reservasExistentes.map(r => r.barbero_id);
+                    
+                    debug('👥 Barberos ocupados:', barberosOcupados);
+                    
+                    // Filtrar solo barberos disponibles
+                    const barberosDisponibles = todosBarberos.filter(
+                        barbero => !barberosOcupados.includes(barbero.id)
+                    );
+                    
+                    debug('👥 Barberos disponibles:', barberosDisponibles);
+                    
+                    if (barberosDisponibles.length === 0) {
+                        // Ningún barbero disponible en este horario
+                        mostrarMensajeNingunBarberoDisponible();
+                        return;
+                    }
+                    
+                    // Actualizar la lista global de barberos disponibles
+                    window.barberosDisponibles = barberosDisponibles;
+                    
+                    // Generar cards con barberos disponibles
+                    generarCardsBarberos(barberosDisponibles);
+                    mostrarPaso2();
+                });
+        });
+}
+
+// Función para mostrar mensaje cuando no hay barberos disponibles
+function mostrarMensajeNingunBarberoDisponible() {
+    const barberosContainer = document.getElementById('barberosContainer');
+    barberosContainer.innerHTML = `
+        <div class="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <i class="fas fa-exclamation-circle text-yellow-500 text-xl mb-2"></i>
+            <h3 class="font-bold text-gray-700 mb-1">Sin disponibilidad en este horario</h3>
+            <p class="text-gray-600 mb-3">Todos los barberos están ocupados a esta hora.</p>
+            <button onclick="volverAHorarios()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                <i class="fas fa-clock mr-2"></i>Elegir otro horario
+            </button>
+        </div>
+    `;
     mostrarPaso2();
 }
 
-        function mostrarPaso2() {
-            if (!horarioSeleccionado) return;
-            debug('➡️ Mostrando paso 2 - Barberos');
-            document.getElementById('paso2').style.display = 'block';
-            document.getElementById('paso2').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+// Función para volver a selección de horarios
+function volverAHorarios() {
+    // Ocultar paso 2
+    document.getElementById('paso2').style.display = 'none';
+    
+    // Limpiar selección de horario
+    document.querySelectorAll('.slot-seleccionado').forEach(el => {
+        el.classList.remove('slot-seleccionado');
+        el.classList.add('slot-disponible');
+    });
+    
+    horarioSeleccionado = null;
+    
+    // Actualizar progreso
+    actualizarProgreso(1);
+    
+    // Scroll al contenedor de horarios
+    document.getElementById('horariosContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Función para mostrar error de barberos
+function mostrarErrorBarberos(mensaje) {
+    const barberosContainer = document.getElementById('barberosContainer');
+    barberosContainer.innerHTML = `
+        <div class="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
+            <i class="fas fa-times-circle text-red-500 text-xl mb-2"></i>
+            <h3 class="font-bold text-gray-700 mb-1">Error</h3>
+            <p class="text-gray-600">${mensaje}</p>
+        </div>
+    `;
+    mostrarPaso2();
+}
 
         function mostrarPaso3() {
             if (!barberoSeleccionado) return;
