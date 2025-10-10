@@ -1292,6 +1292,10 @@ async function enviarEmailNotificacionAdmin(reserva, emailClienteEnviado) {
         return false;
     }
     
+    debug('📧 Email del administrador: ' + barberiaData.email_avisos);
+    debug('📧 Service ID: ' + EMAIL_CONFIG.SERVICE_ID);
+    debug('📧 Template ID Admin: ' + EMAIL_CONFIG.TEMPLATE_ADMIN_ID);
+    
     try {
         debug('📧 Preparando notificación para administrador...');
         
@@ -1328,20 +1332,28 @@ async function enviarEmailNotificacionAdmin(reserva, emailClienteEnviado) {
             barbero_nombre: reserva.barbero_nombre,
             notas: reserva.notas || 'Sin notas',
             email_enviado: emailClienteEnviado ? 'Sí' : 'No',
-            barberia_nombre: reserva.barberia_nombre
+            barberia_nombre: reserva.barberia_nombre,
+            email_barberia: barberiaData.email_avisos // Asegurar que está incluido este campo
         };
 
         debug('📤 Enviando notificación al admin con datos:', templateParams);
         
-        // Enviar email usando EmailJS con IDs de la nueva cuenta
-        const response = await emailjs.send(
-            EMAIL_CONFIG.SERVICE_ID,         // Service ID
-            EMAIL_CONFIG.TEMPLATE_ADMIN_ID,  // Template ID para ADMINISTRADOR
-            templateParams
-        );
-        
-        debug('✅ Notificación al admin enviada exitosamente', response);
-        return true;
+        try {
+            // Enviar email usando EmailJS con IDs de la nueva cuenta
+            const response = await emailjs.send(
+                EMAIL_CONFIG.SERVICE_ID,         // Service ID
+                EMAIL_CONFIG.TEMPLATE_ADMIN_ID,  // Template ID para ADMINISTRADOR
+                templateParams
+            );
+            
+            debug('✅ Notificación al admin enviada exitosamente', response);
+            return true;
+        } catch (emailError) {
+            // Capturar específicamente errores del envío de email
+            debug('❌ Error específico enviando email al administrador', emailError);
+            debug('❌ Mensaje de error: ' + emailError.message);
+            throw emailError; // Re-lanzar para el manejo en el catch principal
+        }
         
     } catch (error) {
         debug('⚠️ Error enviando notificación al administrador', error);
@@ -1410,9 +1422,19 @@ async function guardarReserva(reserva) {
     }
 }
 
-       async function enviarEmailConfirmacion(reserva) {
+     async function enviarEmailConfirmacion(reserva) {
     try {
         debug('📧 Preparando email de confirmación para cliente...');
+        
+        // Verificar si el email es válido
+        if (!reserva.cliente_email) {
+            debug('⚠️ No hay email de cliente para enviar confirmación');
+            return false;
+        }
+        
+        debug('📧 Email del cliente: ' + reserva.cliente_email);
+        debug('📧 Service ID: ' + EMAIL_CONFIG.SERVICE_ID);
+        debug('📧 Template ID Cliente: ' + EMAIL_CONFIG.TEMPLATE_CLIENTE_ID);
         
         // Formatear fecha para el email
         const fechaFormateada = new Date(reserva.fecha + 'T00:00:00').toLocaleDateString('es-CL', {
@@ -1443,21 +1465,39 @@ async function guardarReserva(reserva) {
             barberia_nombre: reserva.barberia_nombre,
             barbero_nombre: reserva.barbero_nombre,
             fecha_formateada: fechaFormateada,
-            hora: horarioCompleto,
+            hora: horarioCompleto, // Usar horario con duración
             cliente_telefono: reserva.cliente_telefono,
-            notas: reserva.notas || 'Sin notas especiales'
+            notas: reserva.notas || 'Sin notas especiales',
+            origen: origenInterno ? 'Reserva realizada por el sistema' : 'Reserva realizada por el cliente'
         };
 
         debug('📤 Enviando email al cliente con datos:', templateParams);
         
-        // Enviar email usando EmailJS con IDs de la nueva cuenta
-        const response = await emailjs.send(
-            EMAIL_CONFIG.SERVICE_ID,           // Usa el Service ID configurado
-            EMAIL_CONFIG.TEMPLATE_CLIENTE_ID,  // Usa el Template ID para clientes
-            templateParams
-        );
-        
-        debug('✅ Email enviado exitosamente al cliente', response);
+        try {
+            // Enviar email usando EmailJS con IDs de la nueva cuenta
+            const response = await emailjs.send(
+                EMAIL_CONFIG.SERVICE_ID,           // Usa el Service ID configurado
+                EMAIL_CONFIG.TEMPLATE_CLIENTE_ID,  // Usa el Template ID para clientes  
+                templateParams
+            );
+            
+            debug('✅ Email enviado exitosamente al cliente', response);
+            
+            // Mostrar mensaje en la interfaz
+            document.getElementById('mensajeEmail').style.display = 'block';
+            document.getElementById('mensajeEmail').className = 'bg-green-100 bg-opacity-20 backdrop-blur-sm rounded-xl p-3 mb-4';
+            document.getElementById('mensajeEmail').innerHTML = `
+                <i class="fas fa-envelope mr-2"></i>
+                <span class="text-sm">Confirmación enviada a ${reserva.cliente_email}</span>
+            `;
+            
+            return true;
+        } catch (emailError) {
+            // Capturar específicamente errores del envío de email
+            debug('❌ Error específico enviando email al cliente', emailError);
+            debug('❌ Mensaje de error: ' + emailError.message);
+            throw emailError; // Re-lanzar para el manejo en el catch principal
+        }
         
         // Mostrar mensaje en la interfaz
         document.getElementById('mensajeEmail').style.display = 'block';
