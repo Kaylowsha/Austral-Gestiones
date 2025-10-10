@@ -444,66 +444,6 @@ async function cargarDatosBarberia() {
     }
 }
 
-// Función para cargar la configuración de horarios
-function cargarConfiguracionHorarios(barberia) {
-    try {
-        // Si existe configuración personalizada en la BD
-        if (barberia.configuracion_horarios) {
-            configuracionHorarios = barberia.configuracion_horarios;
-            debug('✅ Configuración de horarios cargada', configuracionHorarios);
-            
-            // Establecer duración de cita si está configurada
-            if (configuracionHorarios.duracionCita) {
-                duracionCita = parseInt(configuracionHorarios.duracionCita) || 30;
-                debug('⏱️ Duración de cita configurada:', duracionCita + ' minutos');
-            }
-        } else {
-            // Configuración por defecto
-            debug('⚠️ No hay configuración personalizada, usando valores por defecto');
-            configuracionHorarios = {
-                diasActivos: {
-                    lunes: true,
-                    martes: true,
-                    miercoles: true,
-                    jueves: true,
-                    viernes: true,
-                    sabado: true,
-                    domingo: false
-                },
-                horarios: {
-                    lunes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                             tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    martes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    miercoles: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                                 tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    jueves: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    viernes: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                               tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'] },
-                    sabado: { manana: ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30'], 
-                              tarde: ['15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'] },
-                    domingo: { manana: [], tarde: [] }
-                },
-                mensajes: {
-                    lunes: '',
-                    martes: '',
-                    miercoles: '',
-                    jueves: '',
-                    viernes: '',
-                    sabado: '',
-                    domingo: ''
-                },
-                mensajeGlobal: '',
-                duracionCita: 30
-            };
-        }
-    } catch (error) {
-        debug('❌ Error procesando configuración de horarios', error);
-        // En caso de error, usar configuración por defecto
-        configuracionHorarios = null;
-    }
-}
 
 // Función para cargar la configuración de horarios
 function cargarConfiguracionHorarios(barberia) {
@@ -512,6 +452,15 @@ function cargarConfiguracionHorarios(barberia) {
         if (barberia.configuracion_horarios) {
             configuracionHorarios = barberia.configuracion_horarios;
             debug('✅ Configuración de horarios cargada', configuracionHorarios);
+            
+            // Log detallado para diagnosticar estructura
+            debug('📊 Estructura de configuración:', {
+                tieneHorarios: !!configuracionHorarios.horarios,
+                tieneDiasActivos: !!configuracionHorarios.diasActivos,
+                tieneMensajes: !!configuracionHorarios.mensajes,
+                horarioLunes: configuracionHorarios.horarios?.lunes,
+                diasActivos: configuracionHorarios.diasActivos
+            });
             
             // Establecer duración de cita si está configurada
             if (configuracionHorarios.duracionCita) {
