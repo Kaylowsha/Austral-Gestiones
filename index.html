@@ -2618,11 +2618,18 @@ async function guardarHorario() {
     console.log('💾 Guardando horario...');
     
     try {
-        // Desactivar horarios anteriores (soft delete)
-        await supabase
-            .from('horarios_barberos')
-            .update({ activo: false })
-            .eq('barbero_id', currentUser.id);
+       // Desactivar TODOS los horarios anteriores de este barbero (soft delete)
+const { error: deleteError } = await supabase
+    .from('horarios_barberos')
+    .update({ activo: false })
+    .eq('barbero_id', currentUser.id)
+    .eq('activo', true);  // Solo actualizar los que están activos
+
+if (deleteError) {
+    console.error('Error desactivando horarios anteriores:', deleteError);
+}
+
+console.log('✅ Horarios anteriores desactivados');
         
         // Recopilar nuevos horarios
         const horariosNuevos = [];
