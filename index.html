@@ -1348,7 +1348,7 @@ if (parseFloat(monto) <= 0) {
     
     try {
         const vista = document.getElementById('vistaResumen').value;
-        const filtro = document.getElementById('selectBarberoResumen')?.value || 'mi';
+        const filtro = userRole === 'empleado' ? 'mi' : (document.getElementById('selectBarberoResumen')?.value || 'mi');
         
         let fechaInicio, fechaFin, fecha;
         
