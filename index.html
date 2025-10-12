@@ -1594,10 +1594,9 @@ totalRecaudadoSinComision += montoServicio;
                 
         // Añadir la sección de comisión solo si no es "todos"
       if (filtro !== 'todos') {
-            // Determinar el texto correcto basado en el rol y filtro
-            const textoComision = (userRole === 'admin' && (filtro === 'mi')) 
-                ? '💸 Mi Comisión a Cobrar (100%)' 
-                : '💸 Mi Comisión a Cobrar (50%)';
+            // Calcular porcentaje dinámico desde comisionBarbero
+    const porcentajeComision = Math.round(comisionBarbero * 100);
+    const textoComision = `💸 Mi Comisión a Cobrar (${porcentajeComision}%)`;
                 
             html += `
                 <div class="bg-purple-50 p-4 rounded-lg mb-6">
