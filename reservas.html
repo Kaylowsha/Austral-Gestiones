@@ -871,11 +871,11 @@ async function cargarHorariosBarberos(barberos) {
         debug(`🔍 Filtrando barberos para día ${diaBD}`);
         
         barberosDisponibles = barberos.filter(barbero => {
-            // Si no tiene horarios configurados, está disponible (fallback)
-            if (!barbero.horarios || Object.keys(barbero.horarios).length === 0) {
-                debug(`⚠️ ${barbero.nombre} sin horarios configurados - disponible por defecto`);
-                return true;
-            }
+// Si no tiene horarios configurados, NO está disponible
+if (!barbero.horarios || Object.keys(barbero.horarios).length === 0) {
+    debug(`❌ ${barbero.nombre} sin horarios configurados - NO disponible`);
+    return false;  // ← CAMBIO AQUÍ: false en lugar de true
+}
             
             // Verificar si tiene horarios para este día
             const horarioDia = barbero.horarios[diaBD];
