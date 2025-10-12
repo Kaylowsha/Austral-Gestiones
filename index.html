@@ -2459,11 +2459,6 @@ async function mostrarModalHorario() {
 modal.id = 'modalHorario';  // ← AGREGAR ESTA LÍNEA
 modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
     modal.onclick = (e) => {
-    console.log('🔍 Click detectado en modal');
-    console.log('Target:', e.target);
-    console.log('Modal:', modal);
-    console.log('¿Son iguales?', e.target === modal);
-    
     if (e.target === modal) {
         console.log('✅ Click en fondo oscuro - cerrando...');
         cerrarModalHorario();
