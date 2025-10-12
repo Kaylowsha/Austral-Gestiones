@@ -2455,8 +2455,9 @@ async function mostrarModalHorario() {
     }
     
     // Crear modal
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+   const modal = document.createElement('div');
+modal.id = 'modalHorario';  // ← AGREGAR ESTA LÍNEA
+modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
     modal.onclick = (e) => {
     console.log('🔍 Click detectado en modal');
     console.log('Target:', e.target);
@@ -2612,41 +2613,25 @@ function toggleTurno(dia, turno) {
 function cerrarModalHorario() {
     console.log('🔍 Intentando cerrar modal...');
     
-    // Estrategia 1: Buscar por múltiples selectores
-    const selectores = [
-        '.fixed.inset-0.bg-black',
-        '.fixed.inset-0.z-50',
-        'div[class*="fixed"][class*="inset-0"]',
-        'div[class*="bg-black"][class*="bg-opacity"]'
-    ];
+    // Buscar por ID específico
+    const modal = document.getElementById('modalHorario');
     
-    let modal = null;
-    for (const selector of selectores) {
-        modal = document.querySelector(selector);
-        if (modal) {
-            console.log('✅ Modal encontrado con selector:', selector);
-            break;
-        }
-    }
-    
-    // Estrategia 2: Si no encontró nada, buscar el último elemento fijo agregado
-    if (!modal) {
-        const elementosFijos = document.querySelectorAll('.fixed');
-        if (elementosFijos.length > 0) {
-            modal = elementosFijos[elementosFijos.length - 1];
-            console.log('✅ Modal encontrado como último elemento fijo');
-        }
-    }
-    
-    // Eliminar modal
-    if (modal && modal.parentNode) {
-        modal.parentNode.removeChild(modal);
-        console.log('✅ Modal eliminado del DOM');
-    } else if (modal) {
+    if (modal) {
+        console.log('✅ Modal encontrado por ID');
         modal.remove();
-        console.log('✅ Modal removido con remove()');
+        console.log('✅ Modal eliminado del DOM');
+        
+        // Verificar que realmente se eliminó
+        setTimeout(() => {
+            const verificar = document.getElementById('modalHorario');
+            if (verificar) {
+                console.log('⚠️ El modal sigue en el DOM después de eliminar');
+            } else {
+                console.log('✅ Modal confirmado como eliminado');
+            }
+        }, 100);
     } else {
-        console.log('⚠️ No se encontró ningún modal para cerrar');
+        console.log('⚠️ No se encontró el modal con ID');
     }
 }
 function mostrarNotificacionExito(mensaje) {
