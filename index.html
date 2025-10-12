@@ -3720,7 +3720,9 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
         let totalRecaudadoSinComision = 0;
         let totalRecaudado = 0;
         let totalComisionEmpleado = 0;
-        const totalServicios = servicios ? servicios.length : 0;
+     const totalServicios = servicios ? servicios.length : 0;
+        let montoProductosVendidos = 0;
+        let totalProductosVendidos = 0;
         
 if (servicios) {
     let totalRecaudadoEmpleado = 0;
