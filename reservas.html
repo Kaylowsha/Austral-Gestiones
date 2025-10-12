@@ -799,7 +799,6 @@ function generarHorariosEnRango(desde, hasta, duracion) {
                 console.error('Error cargando barberos:', error);
             }
         }
-        // 🆕 FUNCIÓN: Cargar horarios configurados de los barberos
 async function cargarHorariosBarberos(barberos) {
     debug('📅 Cargando horarios de barberos...');
     
@@ -837,11 +836,8 @@ async function cargarHorariosBarberos(barberos) {
         
         debug('✅ Horarios asignados a barberos', barberos);
         
-    } catch (error) {
-        debug('❌ Error crítico cargando horarios', error);
-        console.error('Error cargando horarios:', error);
-    }
-    debug('🔍 DEBUG HORARIOS FINALES:', barberos.map(b => ({
+        // 🆕 DEBUG: Ver horarios finales
+        debug('🔍 DEBUG HORARIOS FINALES:', barberos.map(b => ({
             nombre: b.nombre,
             id: b.id,
             horarios: b.horarios,
@@ -849,6 +845,9 @@ async function cargarHorariosBarberos(barberos) {
         })));
         
     } catch (error) {
+        debug('❌ Error crítico cargando horarios', error);
+        console.error('Error cargando horarios:', error);
+    }
 }
 
        function generarCardsBarberos(barberos) {
