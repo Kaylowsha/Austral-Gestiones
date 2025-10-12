@@ -5687,16 +5687,14 @@ async function obtenerCitasDesdeSupabase(fechaDesde, fechaHasta, filtro) {
                         ` : ''}
                     </div>
                     
-                    <!-- Acciones -->
+             <!-- Acciones -->
                     <div class="mt-4 md:mt-0 md:ml-6 flex space-x-2">
-                        <button onclick="window.open('tel:${cita.cliente_telefono}')" class="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors">
-                            <i class="fas fa-phone mr-1"></i>Llamar
+                        <button onclick="abrirWhatsApp('${cita.cliente_telefono}')" class="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                            <i class="fab fa-whatsapp mr-1"></i>WhatsApp
                         </button>
-                        ${cita.cliente_email ? `
-                        <button onclick="window.open('mailto:${cita.cliente_email}')" class="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-envelope mr-1"></i>Email
+                        <button onclick="cancelarReserva('${cita.id}')" class="btn-cancelar bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                            <i class="fas fa-times-circle mr-1"></i>Cancelar
                         </button>
-                        ` : ''}
                     </div>
                 </div>
             </div>
