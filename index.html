@@ -2602,9 +2602,15 @@ function toggleTurno(dia, turno) {
 }
 
 function cerrarModalHorario() {
-    const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+    // Buscar por clase o por cualquier modal fijo visible
+    const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50') ||
+                  document.querySelector('[style*="z-index: 50"]');
+    
     if (modal) {
         modal.remove();
+        console.log('✅ Modal de horario cerrado');
+    } else {
+        console.log('⚠️ No se encontró el modal para cerrar');
     }
 }
 
