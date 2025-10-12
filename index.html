@@ -5543,6 +5543,54 @@ async function obtenerCitasDesdeSupabase(fechaDesde, fechaHasta, filtro) {
         window.open(`https://wa.me/${numeroFormateado}`, '_blank');
     }
 
+    // Abrir modal de comisión
+    function mostrarModalComision(barberoId, barberoNombre, comisionActual = 50) {
+        document.getElementById('barberoIdComision').value = barberoId;
+        document.getElementById('tituloModalComision').innerHTML = `
+            <i class="fas fa-percentage mr-2"></i>Comisión: ${barberoNombre}
+        `;
+        document.getElementById('porcentajeComision').value = comisionActual;
+        document.getElementById('modalComision').classList.remove('hidden');
+    }
+
+    // Cerrar modal de comisión
+    function cerrarModalComision() {
+        document.getElementById('modalComision').classList.add('hidden');
+        document.getElementById('formComision').reset();
+    }
+
+    // Guardar comisión
+    async function guardarComision(event) {
+        event.preventDefault();
+        
+        const barberoId = document.getElementById('barberoIdComision').value;
+        const porcentaje = parseInt(document.getElementById('porcentajeComision').value);
+        
+        if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+            alert('Por favor ingresa un porcentaje válido entre 0 y 100');
+            return;
+        }
+        
+        try {
+            const { data, error } = await supabase
+                .from('usuarios')
+                .update({ comision: porcentaje })
+                .eq('id', barberoId)
+                .eq('barberia_id', window.CURRENT_BARBERIA_ID);
+            
+            if (error) throw error;
+            
+            alert(`✅ Comisión actualizada correctamente a ${porcentaje}%`);
+            cerrarModalComision();
+            
+            // Recargar la lista de barberos para reflejar el cambio
+            cargarBarberos();
+        } catch (error) {
+            console.error('Error al guardar comisión:', error);
+            alert('❌ Error al guardar comisión. Intenta nuevamente.');
+        }
+    }
+
     // Función para cancelar una reserva
     async function cancelarReserva(reservaId) {
         if (!confirm('¿Estás seguro de que deseas cancelar esta reserva?')) {
