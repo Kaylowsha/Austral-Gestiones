@@ -2641,7 +2641,27 @@ function cerrarModalHorario() {
         console.log('⚠️ No se encontró ningún modal para cerrar');
     }
 }
-
+function mostrarNotificacionExito(mensaje) {
+    // Crear notificación
+    const notif = document.createElement('div');
+    notif.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-[9999] transform transition-all';
+    notif.textContent = mensaje;
+    
+    document.body.appendChild(notif);
+    
+    // Animar entrada
+    setTimeout(() => {
+        notif.style.opacity = '1';
+        notif.style.transform = 'translateY(0)';
+    }, 10);
+    
+    // Eliminar después de 3 segundos
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        notif.style.transform = 'translateY(-20px)';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
+}
 async function guardarHorario() {
     console.log('💾 Guardando horario...');
     
@@ -2700,15 +2720,15 @@ console.log('✅ Horarios anteriores desactivados');
             .from('horarios_barberos')
             .insert(horariosNuevos);
         
-       if (error) throw error;
+      if (error) throw error;
         
-        // Éxito - cerrar modal ANTES de mostrar alerta
+        console.log('✅ Horario guardado exitosamente en BD');
+        
+        // Cerrar modal
         cerrarModalHorario();
         
-        // Mostrar alerta con pequeño delay
-        setTimeout(() => {
-            alert('✅ Horario guardado correctamente');
-        }, 100);
+        // Mostrar notificación temporal (sin alert)
+        mostrarNotificacionExito('✅ Horario guardado correctamente');
         
     } catch (error) {
         console.error('❌ Error guardando horario:', error);
