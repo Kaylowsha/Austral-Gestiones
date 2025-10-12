@@ -3643,8 +3643,7 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
                 cargarDatosCierre();
             }, 100);
         }
-        
-    async function cargarDatosCierre() {
+        async function cargarDatosCierre() {
     const contenido = document.getElementById('contenidoCierre');
     if (!contenido) return;
     
@@ -3693,26 +3692,34 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
         
         console.log(`💰 Cargando cierre: ${vista} | ${fechaInicio} al ${fechaFin}`);
         
-        let queryServicios = supabase
+        let query = supabase
             .from('citas')
             .select('*')
             .eq('barberia_id', window.CURRENT_BARBERIA_ID)
             .gte('fecha', fechaInicio)
             .lte('fecha', fechaFin);
-        
-        if (filtro !== 'todos') {
-            if (filtro === 'mi') {
-                queryServicios = queryServicios.eq('realizado_por_id', currentUser.id);
-            } else {
-                queryServicios = queryServicios.eq('realizado_por_id', filtro);
+
+        // Aplicar filtros según rol
+        if (userRole === 'empleado') {
+            query = query.eq('realizado_por_id', currentUser.id);
+        } else if (userRole === 'admin') {
+            const filtro = document.getElementById('selectBarberoCierre')?.value || 'todos';
+            if (filtro !== 'todos') {
+                if (filtro === 'mi') {
+                    query = query.eq('realizado_por_id', currentUser.id);
+                } else {
+                    query = query.eq('realizado_por_id', filtro);
+                }
             }
         }
-        
-        const { data: servicios, error } = await queryServicios;
+
+        const { data: servicios, error } = await query;
+
         if (error) throw error;
-        
+
         let totalRecaudadoSinComision = 0;
         let totalRecaudado = 0;
+        let totalComisionEmpleado = 0;
         const totalServicios = servicios ? servicios.length : 0;
         
 if (servicios) {
