@@ -2508,14 +2508,22 @@ function mostrarListaBarberos(barberos) {
             <div class="bg-white p-6 rounded-lg shadow border">
                 <div class="flex justify-between items-start">
                     <div class="flex-1">
-                        <div class="text-lg font-semibold text-gray-900 mb-2">${barbero.nombre}</div>
+                   <div class="text-lg font-semibold text-gray-900 mb-2">${barbero.nombre}</div>
                         <div class="text-gray-600 mb-2">${barbero.email}</div>
-                        <div class="mb-3">${roleBadge}</div>
+                        <div class="mb-3 flex items-center space-x-2">
+                            ${roleBadge}
+                            <span class="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full">
+                                <i class="fas fa-percentage"></i> ${barbero.comision || 50}%
+                            </span>
+                        </div>
                     </div>
                     <div class="flex space-x-2">
                        <button class="bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200" onclick="mostrarModalEditarBarbero('${barbero.id}', '${barbero.nombre}', '${barbero.email}', '${barbero.role}')">
                     ✏️
                   </button>
+                        <button class="bg-purple-100 text-purple-600 px-3 py-2 rounded hover:bg-purple-200" onclick="mostrarModalComision('${barbero.id}', '${barbero.nombre}', ${barbero.comision || 50})">
+                            💜
+                        </button>
                         <button class="bg-red-100 text-red-600 px-3 py-2 rounded hover:bg-red-200" onclick="confirmarEliminarBarbero('${barbero.id}', '${barbero.nombre}')">
                             🗑️
                         </button>
