@@ -757,6 +757,10 @@ function generarHorariosEnRango(desde, hasta, duracion) {
                     debug('✅ Barberos activos encontrados', barberosActivos);
                     
                     barberosDisponibles = barberosActivos;
+                    
+                    // 🆕 CARGAR HORARIOS DE CADA BARBERO
+                    await cargarHorariosBarberos(barberosActivos);
+                    
                     generarCardsBarberos(barberosActivos);
                 } else {
                     debug('❌ No hay barberos para esta barbería');
@@ -769,6 +773,49 @@ function generarHorariosEnRango(desde, hasta, duracion) {
                 console.error('Error cargando barberos:', error);
             }
         }
+        // 🆕 FUNCIÓN: Cargar horarios configurados de los barberos
+async function cargarHorariosBarberos(barberos) {
+    debug('📅 Cargando horarios de barberos...');
+    
+    try {
+        // Cargar horarios de TODOS los barberos de una vez
+        const { data: horarios, error } = await supabase
+            .from('horarios_barberos')
+            .select('*')
+            .eq('barberia_id', barberiaId)
+            .eq('activo', true);
+        
+        if (error) {
+            debug('❌ Error cargando horarios', error);
+            return;
+        }
+        
+        debug('✅ Horarios cargados', horarios);
+        
+        // Organizar horarios por barbero_id
+        const horariosPorBarbero = {};
+        
+        if (horarios && horarios.length > 0) {
+            horarios.forEach(h => {
+                if (!horariosPorBarbero[h.barbero_id]) {
+                    horariosPorBarbero[h.barbero_id] = {};
+                }
+                horariosPorBarbero[h.barbero_id][h.dia_semana] = h;
+            });
+        }
+        
+        // Asignar horarios a cada barbero
+        barberos.forEach(barbero => {
+            barbero.horarios = horariosPorBarbero[barbero.id] || {};
+        });
+        
+        debug('✅ Horarios asignados a barberos', barberos);
+        
+    } catch (error) {
+        debug('❌ Error crítico cargando horarios', error);
+        console.error('Error cargando horarios:', error);
+    }
+}
 
         function generarCardsBarberos(barberos) {
             const container = document.getElementById('barberosContainer');
