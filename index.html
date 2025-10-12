@@ -2602,15 +2602,43 @@ function toggleTurno(dia, turno) {
 }
 
 function cerrarModalHorario() {
-    // Buscar por clase o por cualquier modal fijo visible
-    const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50') ||
-                  document.querySelector('[style*="z-index: 50"]');
+    console.log('🔍 Intentando cerrar modal...');
     
-    if (modal) {
+    // Estrategia 1: Buscar por múltiples selectores
+    const selectores = [
+        '.fixed.inset-0.bg-black',
+        '.fixed.inset-0.z-50',
+        'div[class*="fixed"][class*="inset-0"]',
+        'div[class*="bg-black"][class*="bg-opacity"]'
+    ];
+    
+    let modal = null;
+    for (const selector of selectores) {
+        modal = document.querySelector(selector);
+        if (modal) {
+            console.log('✅ Modal encontrado con selector:', selector);
+            break;
+        }
+    }
+    
+    // Estrategia 2: Si no encontró nada, buscar el último elemento fijo agregado
+    if (!modal) {
+        const elementosFijos = document.querySelectorAll('.fixed');
+        if (elementosFijos.length > 0) {
+            modal = elementosFijos[elementosFijos.length - 1];
+            console.log('✅ Modal encontrado como último elemento fijo');
+        }
+    }
+    
+    // Eliminar modal
+    if (modal && modal.parentNode) {
+        modal.parentNode.removeChild(modal);
+        console.log('✅ Modal eliminado del DOM');
+    } else if (modal) {
         modal.remove();
-        console.log('✅ Modal de horario cerrado');
+        console.log('✅ Modal removido con remove()');
     } else {
-        console.log('⚠️ No se encontró el modal para cerrar');
+        console.log('⚠️ No se encontró ningún modal para cerrar');
     }
 }
 
