@@ -1315,10 +1315,10 @@ function seleccionarHorario(hora, elemento) {
 }
 
 // Función para verificar disponibilidad de barberos
-function verificarBarberosDisponibles(fecha, hora) {
+async function verificarBarberosDisponibles(fecha, hora) {
     debug('👥 Verificando barberos disponibles para', fecha, hora);
     
-    // Mostrar indicador de carga en el contenedor de barberos
+    // Mostrar indicador de carga
     const barberosContainer = document.getElementById('barberosContainer');
     barberosContainer.innerHTML = `
         <div class="text-center p-4">
@@ -1327,69 +1327,78 @@ function verificarBarberosDisponibles(fecha, hora) {
         </div>
     `;
     
-    // 1. Obtener todos los barberos activos
-    supabase.from('usuarios')
-        .select('*')
-        .eq('barberia_id', barberiaId)
-        .eq('activo', true)
-        .then(respuestaBarberos => {
-            if (respuestaBarberos.error) {
-                debug('❌ Error al cargar barberos:', respuestaBarberos.error);
+    try {
+        // 1. Usar el array global que YA tiene horarios cargados
+        let todosBarberos = window.barberosDisponibles || [];
+        
+        // Si no hay barberos en memoria, cargarlos
+        if (todosBarberos.length === 0) {
+            debug('⚠️ No hay barberos en memoria, cargando...');
+            
+            const { data: barberos, error: errorBarberos } = await supabase
+                .from('usuarios')
+                .select('*')
+                .eq('barberia_id', barberiaId)
+                .eq('activo', true);
+            
+            if (errorBarberos) {
+                debug('❌ Error al cargar barberos:', errorBarberos);
                 mostrarErrorBarberos('Error al cargar barberos');
                 return;
             }
             
-            const todosBarberos = respuestaBarberos.data || [];
-            
-            if (todosBarberos.length === 0) {
-                debug('⚠️ No hay barberos activos');
-                mostrarErrorBarberos('No hay barberos disponibles');
-                return;
-            }
-            
-            // 2. Obtener reservas existentes para esa fecha y hora
-            supabase.from('reservas')
-                .select('barbero_id')
-                .eq('fecha', fecha)
-                .eq('hora', hora)
-                .neq('estado', 'cancelada')
-                .then(respuestaReservas => {
-                    if (respuestaReservas.error) {
-                        debug('❌ Error al verificar reservas:', respuestaReservas.error);
-                        // Mostramos todos los barberos si hay error en la verificación
-                        generarCardsBarberos(todosBarberos);
-                        mostrarPaso2();
-                        return;
-                    }
-                    
-                    const reservasExistentes = respuestaReservas.data || [];
-                    const barberosOcupados = reservasExistentes.map(r => r.barbero_id);
-                    
-                    debug('👥 Barberos ocupados:', barberosOcupados);
-                    
-                    // Filtrar solo barberos disponibles
-                    const barberosDisponibles = todosBarberos.filter(
-                        barbero => !barberosOcupados.includes(barbero.id)
-                    );
-                    
-                    debug('👥 Barberos disponibles:', barberosDisponibles);
-                    
-                    if (barberosDisponibles.length === 0) {
-                        // Ningún barbero disponible en este horario
-                        mostrarMensajeNingunBarberoDisponible();
-                        return;
-                    }
-                    
-                    // Actualizar la lista global de barberos disponibles
-                    window.barberosDisponibles = barberosDisponibles;
-                    
-                    // Generar cards con barberos disponibles
-                    generarCardsBarberos(barberosDisponibles);
-                    mostrarPaso2();
-                });
-        });
+            // Cargar horarios
+            await cargarHorariosBarberos(barberos);
+            todosBarberos = barberos;
+            window.barberosDisponibles = barberos;
+        }
+        
+        if (todosBarberos.length === 0) {
+            debug('⚠️ No hay barberos activos');
+            mostrarErrorBarberos('No hay barberos disponibles');
+            return;
+        }
+        
+        // 2. Obtener reservas existentes para esa fecha y hora
+        const { data: reservasExistentes, error: errorReservas } = await supabase
+            .from('reservas')
+            .select('barbero_id')
+            .eq('fecha', fecha)
+            .eq('hora', hora)
+            .neq('estado', 'cancelada');
+        
+        if (errorReservas) {
+            debug('❌ Error al verificar reservas:', errorReservas);
+            // Si hay error, mostramos todos (mejor que no mostrar nada)
+            generarCardsBarberos(todosBarberos);
+            mostrarPaso2();
+            return;
+        }
+        
+        const barberosOcupados = (reservasExistentes || []).map(r => r.barbero_id);
+        debug('👥 Barberos ocupados:', barberosOcupados);
+        
+        // 3. Filtrar barberos disponibles (mantiene los horarios)
+        const barberosLibres = todosBarberos.filter(
+            barbero => !barberosOcupados.includes(barbero.id)
+        );
+        
+        debug('👥 Barberos disponibles:', barberosLibres);
+        
+        if (barberosLibres.length === 0) {
+            mostrarMensajeNingunBarberoDisponible();
+            return;
+        }
+        
+        // 4. Generar cards con barberos disponibles (CON horarios)
+        generarCardsBarberos(barberosLibres);
+        mostrarPaso2();
+        
+    } catch (error) {
+        debug('❌ Error crítico:', error);
+        mostrarErrorBarberos('Error al verificar disponibilidad');
+    }
 }
-
 // Función para mostrar mensaje cuando no hay barberos disponibles
 function mostrarMensajeNingunBarberoDisponible() {
     const barberosContainer = document.getElementById('barberosContainer');
