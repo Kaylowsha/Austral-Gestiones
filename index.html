@@ -4006,7 +4006,7 @@ if (servicios) {
                 if (filtro === 'todos' || filtro === 'mi') {
                     montoFinal = montoTotal;
                 } else {
-                    montoFinal = (montoServicio * 0.5) + montoProductos;
+                    montoFinal = (montoServicio * comisionBarbero) + montoProductos;
                 }
                 
                 const formaPago = s.forma_pago;
@@ -4048,7 +4048,7 @@ if (servicios) {
                         montoTransbankServicios += montoServicio;
                         montoTransbankProductos += montoProductos;
                     } else {
-                        montoTransbankServicios += montoServicio * 0.5;
+                        montoTransbankServicios += montoServicio * comisionBarbero;
                         montoTransbankProductos += montoProductos;
                     }
                 }
