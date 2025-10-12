@@ -843,40 +843,87 @@ async function cargarHorariosBarberos(barberos) {
     }
 }
 
-        function generarCardsBarberos(barberos) {
-            const container = document.getElementById('barberosContainer');
-            container.innerHTML = '';
-
-            if (!barberos || barberos.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 p-4">❌ No hay barberos disponibles</div>';
-                return;
+       function generarCardsBarberos(barberos) {
+    const container = document.getElementById('barberosContainer');
+    container.innerHTML = '';
+    
+    if (!barberos || barberos.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 p-4">❌ No hay barberos disponibles</div>';
+        return;
+    }
+    
+    // 🆕 FILTRAR BARBEROS SEGÚN FECHA SELECCIONADA
+    let barberosDisponibles = barberos;
+    
+    if (fechaSeleccionada) {
+        const fecha = new Date(fechaSeleccionada + 'T00:00:00');
+        const diaSemana = fecha.getDay();
+        const diaBD = diaSemana === 0 ? 7 : diaSemana;
+        
+        debug(`🔍 Filtrando barberos para día ${diaBD}`);
+        
+        barberosDisponibles = barberos.filter(barbero => {
+            // Si no tiene horarios configurados, está disponible (fallback)
+            if (!barbero.horarios || Object.keys(barbero.horarios).length === 0) {
+                debug(`⚠️ ${barbero.nombre} sin horarios configurados - disponible por defecto`);
+                return true;
             }
-
-            barberos.forEach((barbero, index) => {
-                const iconos = ['fas fa-user-tie', 'fas fa-male', 'fas fa-user-graduate'];
-                const colores = ['from-blue-400 to-blue-600', 'from-purple-400 to-purple-600', 'from-green-400 to-green-600'];
-                
-                const card = document.createElement('div');
-                card.className = 'barbero-card';
-                card.innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <div class="bg-gradient-to-r ${colores[index % colores.length]} w-12 h-12 rounded-full flex items-center justify-center text-white">
-                            <i class="${iconos[index % iconos.length]}"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="font-bold text-gray-800">${barbero.nombre}</h3>
-                            <p class="text-gray-500 text-sm">Barbero profesional</p>
-                        </div>
-                        <div class="text-green-500">
-                            <i class="fas fa-check-circle hidden selected-icon"></i>
-                        </div>
-                    </div>
-                `;
-                card.onclick = () => seleccionarBarbero(barbero.id, card);
-                container.appendChild(card);
-            });
-        }
-
+            
+            // Verificar si tiene horarios para este día
+            const horarioDia = barbero.horarios[diaBD];
+            
+            if (!horarioDia) {
+                debug(`❌ ${barbero.nombre} no trabaja día ${diaBD}`);
+                return false;
+            }
+            
+            // Verificar si tiene al menos un turno activo
+            const disponible = horarioDia.tiene_manana || horarioDia.tiene_tarde;
+            debug(`${disponible ? '✅' : '❌'} ${barbero.nombre}: Mañana=${horarioDia.tiene_manana}, Tarde=${horarioDia.tiene_tarde}`);
+            
+            return disponible;
+        });
+        
+        debug(`✅ ${barberosDisponibles.length} de ${barberos.length} barberos disponibles`);
+    }
+    
+    // Si no hay barberos disponibles para ese día
+    if (barberosDisponibles.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-orange-600 p-4 bg-orange-50 rounded-lg">
+                <i class="fas fa-calendar-times text-3xl mb-2"></i>
+                <p class="font-semibold">No hay barberos disponibles para esta fecha</p>
+                <p class="text-sm text-gray-600 mt-1">Por favor selecciona otro día</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Generar tarjetas solo para barberos disponibles
+    const iconos = ['fas fa-user-tie', 'fas fa-male', 'fas fa-user-graduate'];
+    const colores = ['from-blue-400 to-blue-600', 'from-purple-400 to-purple-600', 'from-green-400 to-green-600'];
+    
+    barberosDisponibles.forEach((barbero, index) => {
+        const card = document.createElement('div');
+        card.className = 'barbero-card';
+        card.innerHTML = `
+            <div class="flex items-center space-x-4">
+                <div class="bg-gradient-to-r ${colores[index % colores.length]} w-12 h-12 rounded-full flex items-center justify-center text-white">
+                    <i class="${iconos[index % iconos.length]}"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-gray-800">${barbero.nombre}</h3>
+                    <p class="text-gray-500 text-sm">Barbero profesional</p>
+                </div>
+                <div class="text-green-500">
+                    <i class="fas fa-check-circle hidden selected-icon"></i>
+                </div>
+            </div>
+        `;
+        card.onclick = () => seleccionarBarbero(barbero.id, card);
+        container.appendChild(card);
+    });
+}
        function seleccionarBarbero(barberoId, cardElement) {
     debug('👤 Barbero seleccionado', barberoId);
     
