@@ -782,10 +782,11 @@ function generarHorariosEnRango(desde, hasta, duracion) {
                     const barberosActivos = data.filter(b => b.activo === true);
                     debug('✅ Barberos activos encontrados', barberosActivos);
                     
-                    barberosDisponibles = barberosActivos;
-                    
-                    // 🆕 CARGAR HORARIOS DE CADA BARBERO
+                    // 🆕 CARGAR HORARIOS DE CADA BARBERO PRIMERO
                     await cargarHorariosBarberos(barberosActivos);
+                    
+                    // LUEGO asignar a la variable global (ya con horarios)
+                    barberosDisponibles = barberosActivos;
                     
                     generarCardsBarberos(barberosActivos);
                 } else {
