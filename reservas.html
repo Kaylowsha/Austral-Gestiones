@@ -355,17 +355,43 @@ function obtenerHorariosPorDia(fecha) {
     return { manana: HORARIOS_MAÑANA, tarde: HORARIOS_TARDE };
 }
 
-// Función para verificar si un día está activo
 function esDiaActivo(fecha) {
-    if (!configuracionHorarios || !configuracionHorarios.diasActivos) return true;
+    // Si no hay barbero seleccionado, usar configuración antigua (hardcodeada)
+    if (!window.barberoActual || !window.barberoActual.horarios) {
+        debug('⚠️ Sin horarios configurados, usando configuración por defecto');
+        
+        // Configuración antigua (fallback)
+        if (!configuracionHorarios || !configuracionHorarios.diasActivos) {
+            const diaSemana = fecha.getDay();
+            return diaSemana !== 0; // Todos excepto domingo
+        }
+        
+        const diaSemana = fecha.getDay();
+        const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        const nombreDia = nombresDias[diaSemana];
+        return configuracionHorarios.diasActivos[nombreDia] === true;
+    }
     
-    const diaSemana = fecha.getDay(); // 0=domingo, 1=lunes, ...
-    const nombresDias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const nombreDia = nombresDias[diaSemana];
+    // 🆕 VERIFICAR HORARIOS CONFIGURADOS DEL BARBERO
+    const diaSemana = fecha.getDay();
     
-    return configuracionHorarios.diasActivos[nombreDia] !== false;
+    // Convertir día JS (0=Domingo) a día BD (1=Lunes, 7=Domingo)
+    const diaBD = diaSemana === 0 ? 7 : diaSemana;
+    
+    const horarioDia = window.barberoActual.horarios[diaBD];
+    
+    if (!horarioDia) {
+        debug(`❌ Día ${diaBD} no configurado para este barbero`);
+        return false;
+    }
+    
+    // El día está disponible si tiene al menos un turno activo
+    const disponible = horarioDia.tiene_manana || horarioDia.tiene_tarde;
+    
+    debug(`${disponible ? '✅' : '❌'} Día ${diaBD}: Mañana=${horarioDia.tiene_manana}, Tarde=${horarioDia.tiene_tarde}`);
+    
+    return disponible;
 }
-
         // Debug function
         function debug(mensaje, data = null) {
             console.log(`🔍 ${mensaje}`, data);
@@ -851,24 +877,30 @@ async function cargarHorariosBarberos(barberos) {
             });
         }
 
-        function seleccionarBarbero(barberoId, cardElement) {
-            debug('👤 Barbero seleccionado', barberoId);
-            
-            // Limpiar selección previa
-            document.querySelectorAll('.barbero-card').forEach(card => {
-                card.classList.remove('selected');
-                card.querySelector('.selected-icon').classList.add('hidden');
-            });
-
-            // Seleccionar nuevo barbero
-            cardElement.classList.add('selected');
-            cardElement.querySelector('.selected-icon').classList.remove('hidden');
-            
-            barberoSeleccionado = barberoId;
-            actualizarProgreso(3);
-            mostrarPaso3();
-        }
-
+       function seleccionarBarbero(barberoId, cardElement) {
+    debug('👤 Barbero seleccionado', barberoId);
+    
+    // Limpiar selección previa
+    document.querySelectorAll('.barbero-card').forEach(card => {
+        card.classList.remove('selected');
+        card.querySelector('.selected-icon').classList.add('hidden');
+    });
+    // Seleccionar nuevo barbero
+    cardElement.classList.add('selected');
+    cardElement.querySelector('.selected-icon').classList.remove('hidden');
+    
+    barberoSeleccionado = barberoId;
+    
+    // 🆕 GUARDAR OBJETO COMPLETO DEL BARBERO (con horarios)
+    const barberoObj = barberosDisponibles.find(b => b.id === barberoId);
+    if (barberoObj) {
+        window.barberoActual = barberoObj;
+        debug('✅ Barbero con horarios:', barberoObj);
+    }
+    
+    actualizarProgreso(3);
+    mostrarPaso3();
+}
        function generarCalendario() {
     const año = mesVisualizando.getFullYear();
     const mes = mesVisualizando.getMonth();
