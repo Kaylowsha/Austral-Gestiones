@@ -5523,10 +5523,56 @@ async function obtenerCitasDesdeSupabase(fechaDesde, fechaHasta, filtro) {
         return []; // Devolver array vacío en caso de error
     }
 }
-function mostrarCitasAgenda(citas, periodo) {
-    const contenido = document.getElementById('contenidoAgenda');
-    
-    if (!citas || citas.length === 0) {
+// Función para abrir WhatsApp con el número del cliente
+    function abrirWhatsApp(telefono) {
+        // Limpiar y formatear el número (añadir código de país +56 para Chile)
+        let numeroFormateado = telefono.replace(/\s+/g, '').replace(/[-+()\s]/g, '');
+        if (!numeroFormateado.startsWith('+')) {
+            if (numeroFormateado.startsWith('9')) {
+                numeroFormateado = `+56${numeroFormateado}`;
+            } else if (numeroFormateado.startsWith('569')) {
+                numeroFormateado = `+${numeroFormateado}`;
+            } else if (!numeroFormateado.startsWith('56')) {
+                numeroFormateado = `+56${numeroFormateado}`;
+            } else {
+                numeroFormateado = `+${numeroFormateado}`;
+            }
+        }
+        
+        // Abrir WhatsApp
+        window.open(`https://wa.me/${numeroFormateado}`, '_blank');
+    }
+
+    // Función para cancelar una reserva
+    async function cancelarReserva(reservaId) {
+        if (!confirm('¿Estás seguro de que deseas cancelar esta reserva?')) {
+            return;
+        }
+        
+        try {
+            const { data, error } = await supabase
+                .from('reservas')
+                .update({ 
+                    estado: 'cancelada',
+                    confirmada: false 
+                })
+                .eq('id', reservaId);
+            
+            if (error) throw error;
+            
+            alert('✅ Reserva cancelada correctamente');
+            location.reload();
+            
+        } catch (error) {
+            console.error('❌ Error al cancelar la reserva:', error);
+            alert('❌ Error al cancelar la reserva. Por favor, intenta nuevamente.');
+        }
+    }
+
+    function mostrarCitasAgenda(citas, periodo) {
+        const contenido = document.getElementById('contenidoAgenda');
+        
+        if (!citas || citas.length === 0) {
         const mensajePeriodo = {
             'hoy': 'hoy',
             'proximas': 'próximas',
