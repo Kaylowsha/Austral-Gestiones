@@ -3891,6 +3891,32 @@ async function confirmarEliminarGasto(gastoId, categoria, monto) {
      const totalServicios = servicios ? servicios.length : 0;
         let montoProductosVendidos = 0;
         let totalProductosVendidos = 0;
+        // ✅ OBTENER COMISIÓN DEL BARBERO (UNA SOLA VEZ)
+let comisionBarbero = 0.5; // Default 50%
+
+if (filtro !== 'todos' && filtro !== 'mi') {
+    const { data: dataBarbero } = await supabase
+        .from('usuarios')
+        .select('comision')
+        .eq('id', filtro)
+        .single();
+    
+    comisionBarbero = (dataBarbero && dataBarbero.comision !== null) 
+        ? dataBarbero.comision / 100 
+        : 0.5;
+} else if (filtro === 'mi' && userRole === 'admin') {
+    comisionBarbero = 1; // Admin = 100%
+} else if (userRole === 'empleado') {
+    const { data: dataBarbero } = await supabase
+        .from('usuarios')
+        .select('comision')
+        .eq('id', currentUser.id)
+        .single();
+    
+    comisionBarbero = (dataBarbero && dataBarbero.comision !== null) 
+        ? dataBarbero.comision / 100 
+        : 0.5;
+}
         
 if (servicios) {
     let totalRecaudadoEmpleado = 0;
@@ -3927,32 +3953,7 @@ if (servicios) {
         
         totalRecaudadoSinComision += montoServicio;
         
-      // Obtener comisión del barbero si no es "todos"
-        let comisionBarbero = 0.5; // Default 50%
-        
-        if (filtro !== 'todos' && filtro !== 'mi') {
-            const { data: dataBarbero } = await supabase
-                .from('usuarios')
-                .select('comision')
-                .eq('id', filtro)
-                .single();
-            
-            comisionBarbero = (dataBarbero && dataBarbero.comision !== null) 
-                ? dataBarbero.comision / 100 
-                : 0.5;
-        } else if (filtro === 'mi' && userRole === 'admin') {
-            comisionBarbero = 1; // Admin = 100%
-        } else if (userRole === 'empleado') {
-            const { data: dataBarbero } = await supabase
-                .from('usuarios')
-                .select('comision')
-                .eq('id', currentUser.id)
-                .single();
-            
-            comisionBarbero = (dataBarbero && dataBarbero.comision !== null) 
-                ? dataBarbero.comision / 100 
-                : 0.5;
-        }
+      
         
         if (userRole === 'empleado') {
             totalRecaudadoEmpleado += montoServicio;
