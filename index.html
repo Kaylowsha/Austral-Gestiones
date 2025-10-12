@@ -2437,7 +2437,7 @@ try {
     
     const { data: barberos, error } = await supabase
         .from('usuarios')
-        .select('id, nombre, email, role')
+        .select('id, nombre, email, role, comision')
         .eq('barberia_id', window.CURRENT_BARBERIA_ID)
         .eq('activo', true);
     
