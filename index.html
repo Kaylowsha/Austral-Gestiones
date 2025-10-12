@@ -2199,7 +2199,7 @@ if (error) {
         hideLoading();
     }
 }
-        // ===============================
+// ===============================
 // MODAL EDITAR BARBERO
 // ===============================
 function mostrarModalEditarBarbero(id, nombre, email, rol) {
@@ -2255,6 +2255,97 @@ function mostrarModalEditarBarbero(id, nombre, email, rol) {
 function cerrarModalEditarBarbero() {
     const modal = document.getElementById('modalEditarBarbero');
     if (modal) modal.remove();
+}
+
+// ===============================
+// MODAL COMISIÓN
+// ===============================
+function mostrarModalComision(id, nombre, comisionActual = 50) {
+    const modalHTML = `
+        <div id="modalComision" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">💜 Configurar Comisión: ${nombre}</h3>
+                    <button onclick="cerrarModalComision()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <form id="formComision">
+                    <input type="hidden" id="comisionBarberoId" value="${id}">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Porcentaje de Comisión *</label>
+                            <div class="relative">
+                                <input type="number" id="porcentajeComision" value="${comisionActual}" min="0" max="100" step="5" class="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" required>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <span class="text-gray-500 text-lg">%</span>
+                                </div>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">
+                                Porcentaje que recibirá este barbero por servicios realizados
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3 mt-6">
+                        <button type="button" onclick="cerrarModalComision()" class="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700">
+                            💾 Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.getElementById('formComision').addEventListener('submit', procesarGuardarComision);
+}
+
+function cerrarModalComision() {
+    const modal = document.getElementById('modalComision');
+    if (modal) modal.remove();
+}
+
+async function procesarGuardarComision(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('comisionBarberoId').value;
+    const porcentaje = parseInt(document.getElementById('porcentajeComision').value);
+    
+    if (isNaN(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+        alert('Por favor ingresa un porcentaje válido entre 0 y 100');
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const { data, error } = await supabase
+            .from('usuarios')
+            .update({ comision: porcentaje })
+            .eq('id', id)
+            .eq('barberia_id', window.CURRENT_BARBERIA_ID)
+            .select();
+        
+        console.log('🔄 Resultado update comisión:', data, error);
+        
+        if (error) {
+            alert(`Error al actualizar: ${error.message}`);
+        } else {
+            alert(`✅ Comisión actualizada correctamente a ${porcentaje}%`);
+            cerrarModalComision();
+            cargarListaBarberos();
+        }
+        
+    } catch (error) {
+        alert('Error del sistema: ' + error.message);
+    } finally {
+        hideLoading();
+    }
 }
 
 async function procesarEditarBarbero(e) {
