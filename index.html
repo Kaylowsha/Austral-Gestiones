@@ -5572,8 +5572,13 @@ async function obtenerCitasDesdeSupabase(fechaDesde, fechaHasta, filtro) {
     function mostrarCitasAgenda(citas, periodo) {
         const contenido = document.getElementById('contenidoAgenda');
         
+        // Filtrar citas canceladas
+        if (citas) {
+            citas = citas.filter(cita => cita.estado !== 'cancelada');
+        }
+        
         if (!citas || citas.length === 0) {
-        const mensajePeriodo = {
+            const mensajePeriodo = {
             'hoy': 'hoy',
             'proximas': 'próximas',
             'semana': 'esta semana',
