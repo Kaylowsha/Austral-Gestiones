@@ -5456,18 +5456,23 @@ function loadAgenda() {
                 <h2 class="text-2xl font-bold">
                     <i class="fas fa-calendar-alt mr-2"></i>Agenda de Citas
                 </h2>
-                <!-- Botón para configurar horario -->
-            <button onclick="mostrarModalHorario()" 
-                    class="mb-4 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg shadow transition">
-                ⚙️ Configurar Mi Horario
-            </button>
+                
                 <div class="flex space-x-2">
+                    <!-- Botón para configurar MI horario (visible para todos) -->
+                    <button onclick="mostrarModalHorario()" 
+                            class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded flex items-center">
+                        <i class="fas fa-clock mr-2"></i>Configurar Mi Horario
+                    </button>
+                    
                     ${userRole === 'admin' ? `
-                    <button onclick="mostrarModalConfiguracionHorarios()" class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 flex items-center">
+                    <button onclick="mostrarModalConfiguracionHorarios()" 
+                            class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 flex items-center">
                         <i class="fas fa-cog mr-2"></i>Configurar Horarios
                     </button>
                     ` : ''}
-                    <button onclick="abrirReservasOnline()" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 flex items-center">
+                    
+                    <button onclick="abrirReservasOnline()" 
+                            class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 flex items-center">
                         <i class="fas fa-plus-circle mr-2"></i>Agendar Cliente
                     </button>
                 </div>
