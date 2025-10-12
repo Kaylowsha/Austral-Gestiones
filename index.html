@@ -1593,6 +1593,8 @@ totalRecaudadoSinComision += montoServicio;
                 </div>`;
                 
         // Añadir la sección de comisión solo si no es "todos"
+        console.log('🔍 DIAGNÓSTICO - filtro:', filtro, 'userRole:', userRole, 'comisionBarbero:', comisionBarbero, 'totalComisionEmpleado:', totalComisionEmpleado);
+        console.log('🔍 ¿Debe mostrar comisión?', filtro !== 'todos');
       if (filtro !== 'todos') {
             // Calcular porcentaje dinámico desde comisionBarbero
     const porcentajeComision = Math.round(comisionBarbero * 100);
