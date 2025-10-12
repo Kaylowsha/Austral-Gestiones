@@ -2665,11 +2665,15 @@ async function guardarHorario() {
             .from('horarios_barberos')
             .insert(horariosNuevos);
         
-        if (error) throw error;
+       if (error) throw error;
         
-        // Éxito
-        alert('✅ Horario guardado correctamente');
+        // Éxito - cerrar modal ANTES de mostrar alerta
         cerrarModalHorario();
+        
+        // Mostrar alerta con pequeño delay
+        setTimeout(() => {
+            alert('✅ Horario guardado correctamente');
+        }, 100);
         
     } catch (error) {
         console.error('❌ Error guardando horario:', error);
