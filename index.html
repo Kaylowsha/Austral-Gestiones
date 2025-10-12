@@ -5642,22 +5642,6 @@ async function obtenerCitasDesdeSupabase(fechaDesde, fechaHasta, filtro) {
         window.open(`https://wa.me/${numeroFormateado}`, '_blank');
     }
 
-    // Abrir modal de comisión
-    function mostrarModalComision(barberoId, barberoNombre, comisionActual = 50) {
-        document.getElementById('barberoIdComision').value = barberoId;
-        document.getElementById('tituloModalComision').innerHTML = `
-            <i class="fas fa-percentage mr-2"></i>Comisión: ${barberoNombre}
-        `;
-        document.getElementById('porcentajeComision').value = comisionActual;
-        document.getElementById('modalComision').classList.remove('hidden');
-    }
-
-    // Cerrar modal de comisión
-    function cerrarModalComision() {
-        document.getElementById('modalComision').classList.add('hidden');
-        document.getElementById('formComision').reset();
-    }
-
     // Guardar comisión
     async function guardarComision(event) {
         event.preventDefault();
