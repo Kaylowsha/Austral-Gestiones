@@ -2429,6 +2429,248 @@ console.log('🔄 Resultado update:', data, error);
     }
 }
         // ===============================
+// MODAL: CONFIGURAR HORARIO
+// ===============================
+
+async function mostrarModalHorario() {
+    console.log('⚙️ Abriendo modal de configuración de horario...');
+    
+    // Cargar horarios actuales del barbero
+    const { data: horariosActuales, error } = await supabase
+        .from('horarios_barberos')
+        .select('*')
+        .eq('barbero_id', currentUser.id)
+        .eq('activo', true);
+    
+    if (error) {
+        console.error('Error cargando horarios:', error);
+    }
+    
+    // Convertir array a objeto para fácil acceso
+    const horariosPorDia = {};
+    if (horariosActuales) {
+        horariosActuales.forEach(h => {
+            horariosPorDia[h.dia_semana] = h;
+        });
+    }
+    
+    // Crear modal
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+    modal.onclick = (e) => {
+        if (e.target === modal) cerrarModalHorario();
+    };
+    
+    const diasSemana = [
+        { num: 1, nombre: 'Lunes' },
+        { num: 2, nombre: 'Martes' },
+        { num: 3, nombre: 'Miércoles' },
+        { num: 4, nombre: 'Jueves' },
+        { num: 5, nombre: 'Viernes' },
+        { num: 6, nombre: 'Sábado' },
+        { num: 7, nombre: 'Domingo' }
+    ];
+    
+    let filasHTML = '';
+    diasSemana.forEach(dia => {
+        const horario = horariosPorDia[dia.num] || {};
+        
+        filasHTML += `
+            <div class="border-b py-3">
+                <div class="flex items-center mb-2">
+                    <input type="checkbox" 
+                           id="dia_${dia.num}" 
+                           class="mr-2 w-4 h-4"
+                           ${horario.tiene_manana || horario.tiene_tarde ? 'checked' : ''}
+                           onchange="toggleDia(${dia.num})">
+                    <label for="dia_${dia.num}" class="font-semibold text-gray-700">${dia.nombre}</label>
+                </div>
+                
+                <div id="horarios_${dia.num}" class="ml-6 space-y-2 ${horario.tiene_manana || horario.tiene_tarde ? '' : 'hidden'}">
+                    <!-- Turno Mañana -->
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" 
+                               id="manana_${dia.num}" 
+                               class="w-4 h-4"
+                               ${horario.tiene_manana ? 'checked' : ''}
+                               onchange="toggleTurno(${dia.num}, 'manana')">
+                        <label class="text-sm text-gray-600 w-16">Mañana:</label>
+                        <input type="time" 
+                               id="manana_inicio_${dia.num}" 
+                               class="border rounded px-2 py-1 text-sm"
+                               value="${horario.hora_inicio_manana || '09:00'}"
+                               ${!horario.tiene_manana ? 'disabled' : ''}>
+                        <span class="text-sm text-gray-500">a</span>
+                        <input type="time" 
+                               id="manana_fin_${dia.num}" 
+                               class="border rounded px-2 py-1 text-sm"
+                               value="${horario.hora_fin_manana || '14:00'}"
+                               ${!horario.tiene_manana ? 'disabled' : ''}>
+                    </div>
+                    
+                    <!-- Turno Tarde -->
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" 
+                               id="tarde_${dia.num}" 
+                               class="w-4 h-4"
+                               ${horario.tiene_tarde ? 'checked' : ''}
+                               onchange="toggleTurno(${dia.num}, 'tarde')">
+                        <label class="text-sm text-gray-600 w-16">Tarde:</label>
+                        <input type="time" 
+                               id="tarde_inicio_${dia.num}" 
+                               class="border rounded px-2 py-1 text-sm"
+                               value="${horario.hora_inicio_tarde || '15:00'}"
+                               ${!horario.tiene_tarde ? 'disabled' : ''}>
+                        <span class="text-sm text-gray-500">a</span>
+                        <input type="time" 
+                               id="tarde_fin_${dia.num}" 
+                               class="border rounded px-2 py-1 text-sm"
+                               value="${horario.hora_fin_tarde || '20:00'}"
+                               ${!horario.tiene_tarde ? 'disabled' : ''}>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <!-- Header -->
+            <div class="bg-purple-500 text-white px-6 py-4 flex justify-between items-center sticky top-0">
+                <h3 class="text-xl font-bold">⚙️ Configurar Mi Horario</h3>
+                <button onclick="cerrarModalHorario()" class="text-white hover:text-gray-200 text-2xl">×</button>
+            </div>
+            
+            <!-- Body -->
+            <div class="p-6">
+                <p class="text-gray-600 mb-4">Define los días y horarios en los que estarás disponible para atender clientes.</p>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
+                    <p class="text-sm text-blue-800">
+                        💡 <strong>Tip:</strong> Marca el día y luego selecciona si trabajas mañana, tarde o ambos turnos.
+                    </p>
+                </div>
+                
+                ${filasHTML}
+            </div>
+            
+            <!-- Footer -->
+            <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3 sticky bottom-0">
+                <button onclick="cerrarModalHorario()" 
+                        class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100">
+                    Cancelar
+                </button>
+                <button onclick="guardarHorario()" 
+                        class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">
+                    💾 Guardar Horario
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function toggleDia(dia) {
+    const checkbox = document.getElementById(`dia_${dia}`);
+    const contenedor = document.getElementById(`horarios_${dia}`);
+    
+    if (checkbox.checked) {
+        contenedor.classList.remove('hidden');
+    } else {
+        contenedor.classList.add('hidden');
+        // Desmarcar turnos
+        document.getElementById(`manana_${dia}`).checked = false;
+        document.getElementById(`tarde_${dia}`).checked = false;
+        toggleTurno(dia, 'manana');
+        toggleTurno(dia, 'tarde');
+    }
+}
+
+function toggleTurno(dia, turno) {
+    const checkbox = document.getElementById(`${turno}_${dia}`);
+    const inputInicio = document.getElementById(`${turno}_inicio_${dia}`);
+    const inputFin = document.getElementById(`${turno}_fin_${dia}`);
+    
+    if (checkbox.checked) {
+        inputInicio.disabled = false;
+        inputFin.disabled = false;
+    } else {
+        inputInicio.disabled = true;
+        inputFin.disabled = true;
+    }
+}
+
+function cerrarModalHorario() {
+    const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function guardarHorario() {
+    console.log('💾 Guardando horario...');
+    
+    try {
+        // Desactivar horarios anteriores (soft delete)
+        await supabase
+            .from('horarios_barberos')
+            .update({ activo: false })
+            .eq('barbero_id', currentUser.id);
+        
+        // Recopilar nuevos horarios
+        const horariosNuevos = [];
+        
+        for (let dia = 1; dia <= 7; dia++) {
+            const diaCheckbox = document.getElementById(`dia_${dia}`);
+            
+            if (diaCheckbox && diaCheckbox.checked) {
+                const mananaCheck = document.getElementById(`manana_${dia}`);
+                const tardeCheck = document.getElementById(`tarde_${dia}`);
+                
+                const horario = {
+                    barberia_id: window.CURRENT_BARBERIA_ID,
+                    barbero_id: currentUser.id,
+                    dia_semana: dia,
+                    tiene_manana: mananaCheck.checked,
+                    hora_inicio_manana: mananaCheck.checked ? document.getElementById(`manana_inicio_${dia}`).value : null,
+                    hora_fin_manana: mananaCheck.checked ? document.getElementById(`manana_fin_${dia}`).value : null,
+                    tiene_tarde: tardeCheck.checked,
+                    hora_inicio_tarde: tardeCheck.checked ? document.getElementById(`tarde_inicio_${dia}`).value : null,
+                    hora_fin_tarde: tardeCheck.checked ? document.getElementById(`tarde_fin_${dia}`).value : null,
+                    activo: true
+                };
+                
+                // Validación: al menos un turno debe estar activo
+                if (horario.tiene_manana || horario.tiene_tarde) {
+                    horariosNuevos.push(horario);
+                }
+            }
+        }
+        
+        // Validación: debe tener al menos un día configurado
+        if (horariosNuevos.length === 0) {
+            alert('⚠️ Debes configurar al menos un día de la semana.');
+            return;
+        }
+        
+        // Insertar nuevos horarios
+        const { error } = await supabase
+            .from('horarios_barberos')
+            .insert(horariosNuevos);
+        
+        if (error) throw error;
+        
+        // Éxito
+        alert('✅ Horario guardado correctamente');
+        cerrarModalHorario();
+        
+    } catch (error) {
+        console.error('❌ Error guardando horario:', error);
+        alert('❌ Error al guardar el horario. Intenta nuevamente.');
+    }
+}
+        // ===============================
         // PESTAÑAS PENDIENTES
         // ===============================
         function loadGestionBarberos() {
