@@ -1476,34 +1476,7 @@ if (servicios) {
 totalRecaudadoSinComision += montoServicio;
             });
         }
-        
-        // Obtener comisión del barbero
-        let comisionBarbero = 0.5; // Default 50%
-        
-        if (filtro !== 'todos' && filtro !== 'mi') {
-            const { data: dataBarbero } = await supabase
-                .from('usuarios')
-                .select('comision')
-                .eq('id', filtro)
-                .single();
-            
-            comisionBarbero = (dataBarbero && dataBarbero.comision !== null) 
-                ? dataBarbero.comision / 100 
-                : 0.5;
-        } else if (filtro === 'mi' && userRole === 'admin') {
-            comisionBarbero = 1; // Admin = 100%
-        } else if (userRole === 'empleado') {
-            const { data: dataBarbero } = await supabase
-                .from('usuarios')
-                .select('comision')
-                .eq('id', currentUser.id)
-                .single();
-            
-            comisionBarbero = (dataBarbero && dataBarbero.comision !== null) 
-                ? dataBarbero.comision / 100 
-                : 0.5;
-        }
-        
+       
         // Recalcular con comisiones dinámicas
         if (servicios) {
             servicios.forEach((s) => {
