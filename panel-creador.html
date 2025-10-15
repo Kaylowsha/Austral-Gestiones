@@ -436,6 +436,36 @@
         </div>
     </div>
 </div>
+    <!-- Modal Extender Trial -->
+<div id="modalExtenderTrial" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Extender Trial</h3>
+            <button onclick="cerrarModalExtenderTrial()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div class="mb-6">
+            <p id="barberiaExtendName" class="text-lg font-medium text-gray-800"></p>
+            <p class="text-sm text-gray-600 mt-1">Ingresa la cantidad de días para extender el trial</p>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Días de Trial</label>
+            <input type="number" id="diasExtender" class="w-full px-4 py-2 border rounded-lg" value="15" min="1" max="180">
+        </div>
+        
+        <div class="flex space-x-3">
+            <button onclick="cerrarModalExtenderTrial()" class="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">
+                Cancelar
+            </button>
+            <button onclick="confirmarExtenderTrial()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">
+                Extender
+            </button>
+        </div>
+    </div>
+</div>
     <!-- Modal Nueva Barbería -->
     <div id="modalNuevaBarberia" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -823,9 +853,9 @@ if (barberia.activa) {
 </button>
 <button onclick="extenderTrial('${barberia.id}')" 
     class="mr-2 px-3 py-1 bg-blue-500 text-white rounded hover:opacity-80">
-    +15 días
+    <i class="fas fa-calendar-plus mr-1"></i> Extender Trial
 </button>
-<button onclick="mostrarModalEliminar('${barberia.id}', '${barberia.nombre}')" 
+<button onclick="mostrarModalEliminar('${barberia.id}', '${barberia.nombre}')"
     class="mr-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 font-bold">
     🗑️ Eliminar
 </button>
@@ -898,32 +928,86 @@ if (barberia.activa) {
     }
 }
 
-        async function extenderTrial(id) {
-            if (!confirm('¿Extender trial por 15 días más?')) return;
+      // Variable para almacenar el ID de la barbería a extender
+let barberiaExtenderId = null;
 
-            try {
-                const nuevaFecha = new Date();
-                nuevaFecha.setDate(nuevaFecha.getDate() + 15);
+// Mostrar modal de extender trial
+function mostrarModalExtenderTrial(id, nombre) {
+    barberiaExtenderId = id;
+    document.getElementById('barberiaExtendName').textContent = nombre;
+    document.getElementById('diasExtender').value = "15"; // Valor predeterminado
+    document.getElementById('modalExtenderTrial').classList.remove('hidden');
+}
 
-                const { error } = await supabase
-                    .from('barberias')
-                    .update({ 
-                        trial_hasta: nuevaFecha.toISOString().split('T')[0],
-                        plan: 'trial',
-                        activa: true
-                    })
-                    .eq('id', id);
+// Cerrar modal de extender trial
+function cerrarModalExtenderTrial() {
+    barberiaExtenderId = null;
+    document.getElementById('modalExtenderTrial').classList.add('hidden');
+}
 
-                if (!error) {
-                    alert('✅ Trial extendido por 15 días');
-                    cargarBarberias();
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
+// Confirmar extensión de trial
+async function confirmarExtenderTrial() {
+    if (!barberiaExtenderId) return;
+    
+    const dias = parseInt(document.getElementById('diasExtender').value);
+    
+    if (!dias || dias < 1) {
+        alert('Por favor ingresa un número válido de días');
+        return;
+    }
+    
+    try {
+        const nuevaFecha = new Date();
+        nuevaFecha.setDate(nuevaFecha.getDate() + dias);
+        
+        const { error } = await supabase
+            .from('barberias')
+            .update({ 
+                trial_hasta: nuevaFecha.toISOString().split('T')[0],
+                plan: 'trial',
+                activa: true
+            })
+            .eq('id', barberiaExtenderId);
+        
+        if (!error) {
+            alert(`✅ Trial extendido por ${dias} días`);
+            cerrarModalExtenderTrial();
+            cargarBarberias();
+            // Si estamos en la pestaña de facturación, actualizar también
+            if (!document.getElementById('content-facturacion').classList.contains('hidden')) {
+                cargarFacturacion();
             }
+        } else {
+            throw error;
         }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
 
-        function mostrarModalNuevaBarberia() {
+// Modificar la función existente extenderTrial para que abra el modal
+async function extenderTrial(id) {
+    // Obtener el nombre de la barbería
+    try {
+        const { data: barberia, error } = await supabase
+            .from('barberias')
+            .select('nombre')
+            .eq('id', id)
+            .single();
+            
+        if (error) throw error;
+        
+        // Mostrar modal con el nombre
+        mostrarModalExtenderTrial(id, barberia.nombre);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        // Si hay error, mostrar modal sin nombre
+        mostrarModalExtenderTrial(id, 'Barbería');
+    }
+}
+
+function mostrarModalNuevaBarberia() {
             document.getElementById('modalNuevaBarberia').classList.remove('hidden');
         }
 
