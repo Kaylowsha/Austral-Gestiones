@@ -417,7 +417,7 @@ if (barberiaInfo && barberiaInfo.nombre) {
             loadTab('registrar');
         }
         
-   async function checkTrialStatus() {
+ async function checkTrialStatus() {
     const barberiaData = window.CURRENT_BARBERIA_DATA;
     
     if (!barberiaData) return;
@@ -429,7 +429,7 @@ if (barberiaInfo && barberiaInfo.nombre) {
         return;
     }
     
-    // Si está activa pero en trial, mostrar días restantes
+    // Verificar si el trial ha expirado y desactivar si es necesario
     if (barberiaData.plan === 'trial') {
         document.getElementById('trialAlert').classList.remove('hidden');
         
@@ -440,6 +440,34 @@ if (barberiaInfo && barberiaInfo.nombre) {
             
         document.getElementById('trialMessage').textContent = mensaje;
         console.log('⏰ Trial status:', mensaje);
+        
+        // Si el trial ha expirado, desactivar barbería automáticamente
+        if (diasRestantes <= 0) {
+            console.log('⚠️ Trial expirado - Desactivando barbería automáticamente');
+            
+            try {
+                const { error } = await supabase
+                    .from('barberias')
+                    .update({ activa: false })
+                    .eq('id', barberiaData.id);
+                
+                if (error) {
+                    console.error('❌ Error al desactivar barbería:', error);
+                } else {
+                    console.log('✅ Barbería desactivada exitosamente');
+                    // Actualizar datos locales
+                    window.CURRENT_BARBERIA_DATA.activa = false;
+                    // Mostrar banner y bloquear funciones
+                    mostrarBannerVencimiento();
+                    bloquearFuncionesVencidas();
+                    
+                    // Mostrar notificación al usuario
+                    showToast('Tu período de prueba ha finalizado. La barbería ha sido desactivada.', 'error', 10000);
+                }
+            } catch (error) {
+                console.error('❌ Error crítico al desactivar barbería:', error);
+            }
+        }
     }
 }
 
