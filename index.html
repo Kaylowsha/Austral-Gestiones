@@ -407,8 +407,14 @@ if (barberiaInfo && barberiaInfo.nombre) {
     console.log('⚠️ No se pudo cargar información de barbería');
 }
             
-            // Verificar y mostrar alerta de trial si aplica
-            checkTrialStatus();
+          // Verificar estado de trial (si corresponde) y vencimiento automático
+checkTrialStatus();
+
+// Programar verificación periódica (cada 30 minutos)
+setInterval(() => {
+    console.log('🔄 Verificación periódica de estado de trial...');
+    checkTrialStatus();
+}, 30 * 60 * 1000); // 30 minutos en milisegundos
             
             // Generar tabs según el rol
             generateTabs();
