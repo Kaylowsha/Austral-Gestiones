@@ -985,11 +985,12 @@ if (!barbero.horarios || Object.keys(barbero.horarios).length === 0) {
         container.appendChild(btn);
     }
     
-    // Días del mes actual
+  // Días del mes actual
     const hoy = new Date();
     for (let dia = 1; dia <= diasEnMes; dia++) {
         const fechaDia = new Date(año, mes, dia);
-        const esPasado = fechaDia < hoy;
+        // Modificación: Comparar solo la fecha (año/mes/día) sin horas/minutos/segundos
+        const esPasado = fechaDia.setHours(0,0,0,0) < hoy.setHours(0,0,0,0);
         const esHoy = fechaDia.toDateString() === hoy.toDateString();
         
         // Verificar si el día está activo según configuración
