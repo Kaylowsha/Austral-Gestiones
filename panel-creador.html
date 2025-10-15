@@ -1035,6 +1035,10 @@ if (barberia.activa) {
                 badgeColor = 'bg-red-100 text-red-800';
             }
 
+            // Determinar si mostrar el botón "Recibí Pago"
+            // Ahora lo mostraremos para TODOS los usuarios en trial
+            const mostrarBotonPago = barberia.plan === 'trial';
+
             tbody.innerHTML += `
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">${barberia.nombre}</td>
@@ -1050,16 +1054,16 @@ if (barberia.activa) {
                         ${vencimiento ? vencimiento.toLocaleDateString('es-CL') : 'N/A'}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
-                     ${(barberia.plan === 'trial' && !barberia.activa) ? 
-    `<button onclick="convertirAPremium('${barberia.id}')" 
-        class="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:from-green-600 hover:to-green-700 shadow-lg">
-        <i class="fas fa-check-circle mr-1"></i>
-        Recibí Pago
-    </button>` : 
-    (barberia.plan === 'premium') ? 
-        '<span class="text-green-600 font-semibold">✓ Al día</span>' :
-        '<span class="text-gray-400">-</span>'}
-</td>
+                        ${mostrarBotonPago ? 
+                            `<button onclick="convertirAPremium('${barberia.id}')" 
+                                class="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:from-green-600 hover:to-green-700 shadow-lg">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Recibí Pago
+                            </button>` : 
+                            (barberia.plan === 'premium') ? 
+                                '<span class="text-green-600 font-semibold">✓ Al día</span>' :
+                                '<span class="text-gray-400">-</span>'}
+                    </td>
                 </tr>
             `;
         });
@@ -1073,7 +1077,6 @@ if (barberia.activa) {
         console.error('Error cargando facturación:', error);
     }
 }
-
 async function convertirAPremium(barberiaId) {
     if (!confirm('¿Confirmar que esta barbería ha pagado?\n\n✅ Se activará la barbería\n✅ Se cambiará a plan Premium')) return;
     
